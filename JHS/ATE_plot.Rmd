@@ -16,17 +16,17 @@ library(ggplot2)
 ```{r}
 # Sample data frame (replace this with your own data)
 data <- data.frame(
-  exposure = rep(c("n_SES", "n_unfav_food", "ind_nutrition",
-                   "n_phy_facility", "ind_phy_act", "racial_seg"), 2),
+  exposure = rep(c("Nb SES", "Nb unf food store", "Ind nut categ",
+                   "Nb phys act fac", "Ind phys act categ", "Nb rac seg (Black)"), 2),
   method = c(rep("G-computation", 6), rep("IPSW", 6)),
   ATE = c(-0.022505207, -0.0132172827, 0.0017392542, 
           -0.022505207, 0.0070020811, 0.0523644617,
           -0.0063618892, 0.0417689945, 0.146375548,
           0.0473926079, 0.2506207526, 0.0362880332),
   ci_min = c(-0.06416848, -0.05831368, -0.03128012,
-           -0.06805158, -0.02887941, -0.02121049,
-           -0.17260665, 0.03717214, -0.0449191,
-           -0.02679408, -0.41692445, -0.04873067),
+             -0.06805158, -0.02887941, -0.02121049,
+             -0.17260665, 0.03717214, -0.0449191,
+             -0.02679408, -0.41692445, -0.04873067),
   ci_max = c(0.0257727, 0.02493277, 0.03141223,
              0.02179139, 0.03516423, 0.11142757,
              0.37233313, 0.04830717, 0.35638935,
@@ -36,15 +36,17 @@ data <- data.frame(
 data$exposure <- factor(data$exposure, levels = rev(unique(data$exposure)))
 
 ggplot(data, aes(x = ATE, y = exposure, color = method)) +
-  geom_point(position = position_dodge(width = 0.5)) +  # Dodge points for different groups
-  geom_errorbarh(aes(xmin = ci_min, xmax = ci_max), height = 0.2, position = position_dodge(width = 0.5)) +
+  geom_point(position = position_dodge(width = 0.5), size=3.5) +  # Dodge points for different groups
+  geom_errorbarh(aes(xmin = ci_min, xmax = ci_max), height = 0.2, position = position_dodge(width = 0.5), size =2) +
   labs(x = "ATE",
        y = "Exposures") +
   geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
   theme_minimal() +
-  theme(axis.text = element_text(size = 12),     
-  axis.title = element_text(size = 14),    
-  legend.text = element_text(size = 10),  
-  legend.title = element_text(size = 12))
+  theme(axis.text = element_text(size = 35),     
+        axis.title = element_text(size = 35),    
+        legend.text = element_text(size = 32),  
+        legend.title = element_text(size = 32))
+
+
 ```
 
