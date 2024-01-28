@@ -1,4 +1,4 @@
-idno,cvda,cvdatt,cvd_10y,EXAM,F1_PC2,G_bla_rk,S1FAV,S1PAI,site,income,chdiet,chphysact,age,race,gender,cig,cural,diabet,hdl,chol,sbp
+idno,cvda,cvdatt,Y_10y,EXAM,nSES,nRS,nFavFood,nPhysFac,site,FamIncome,nutrition,PhysAct,age,race,gender,currentSmoker,alc,Diabetes,hdl,totchol,sbp
 3010007,0.0,6523.0,0,1.0,,,,,3.0,11.0,1.0,2.0,51.0,1.0,1.0,1.0,1.0,0.0,59.0,169.0,147.5
 3010023,0.0,6373.0,0,1.0,,,,,3.0,11.0,0.0,2.0,54.0,1.0,0.0,0.0,,0.0,75.0,157.0,100.5
 3010031,0.0,6060.0,0,1.0,0.859551491,2.88276691264,0.318447291851,0.0,3.0,4.0,0.0,2.0,78.0,3.0,0.0,1.0,0.0,0.0,38.0,198.0,149.5
