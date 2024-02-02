@@ -1,0 +1,62 @@
+---
+title: "plots"
+author: "Xiaoting Chen"
+date: "2023-09-19"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(tidyverse)
+```
+
+
+## Mediation 
+
+### data
+
+```{r}
+setwd("../results/MESA_Bla/mediation")
+
+# List all CSV files in the directory
+files <- list.files(pattern = "\\.csv$")
+
+# Function to read each file and add a column with the file name
+read_csv_add_filename <- function(file) {
+  data <- read.csv(file, stringsAsFactors = FALSE)
+  data$SourceFile <- file # Add a new column with the file name
+  return(data)
+}
+
+# Read each CSV file, add file name, and combine them into one data frame
+mesa_mediation <- do.call(rbind, lapply(files, read_csv_add_filename)) %>%
+  separate(col = SourceFile, into = c("new_col1", "nb_exposure", "ind_mediator"), sep = "_") %>%
+  separate(col = ind_mediator, into = c("ind_mediator","format")) %>%
+  select(-c(1,7,10)) %>%
+  filter(Effect != "Prop. Mediated") %>%
+  mutate(Effect = factor(mesa_mediation$Effect, levels = rev(unique(mesa_mediation$Effect))))
+
+```
+
+
+### plotting
+```{r}
+plt_nses_raw <- mesa_mediation[(mesa_mediation$nb_exposure == "nSES")&(mesa_mediation$Data == "mesa_bla_raw"), ]
+
+ggplot(plt_nses_raw, aes(x = Estimate, y = ind_mediator, color = Effect)) +
+  geom_point(position = position_dodge(width = 0.5), size=3.5) +  # Dodge points for different groups
+  geom_errorbarh(aes(xmin = X95_CI_Lower, xmax = X95_CI_Upper), height = 0.2, position = position_dodge(width = 0.5), size =2) +
+  labs(x = "Effect",
+       y = "Individual potential mediator") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
+  theme_minimal() +
+  theme(axis.text = element_text(size = 15),
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size = 15),
+        legend.title = element_text(size = 15)) +
+  ggtitle("nSES as exposure using raw data")
+
+
+```
+
