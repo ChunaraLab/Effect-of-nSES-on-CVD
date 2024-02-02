@@ -1,0 +1,13 @@
+,Data,Effect,Estimate,95_CI_Lower,95_CI_Upper
+0,mesa_bla_raw,ACME,0.00024,-0.00199,0.00314
+1,mesa_bla_raw,ADE,0.0522,-0.12116,0.21099
+2,mesa_bla_raw,Total Effect,0.05099,-0.12235,0.20914
+3,mesa_bla_raw,Prop. Mediated,0.00479,-0.02093,0.0305
+4,mesa_bla_imputed,ACME,2e-05,-0.00122,0.00142
+5,mesa_bla_imputed,ADE,0.00543,-0.15273,0.12946
+6,mesa_bla_imputed,Total Effect,0.00567,-0.14844,0.12936
+7,mesa_bla_imputed,Prop. Mediated,0.00337,-0.01438,0.0207
+8,mesa_bla_pre,ACME,-0.00053,-0.00633,0.00375
+9,mesa_bla_pre,ADE,0.02715,-0.16164,0.2376
+10,mesa_bla_pre,Total Effect,0.02714,-0.16198,0.23761
+11,mesa_bla_pre,Prop. Mediated,-0.01947,-0.04541,0.00548
