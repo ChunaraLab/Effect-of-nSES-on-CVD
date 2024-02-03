@@ -17,7 +17,7 @@ library(tidyverse)
 ### data
 
 ```{r}
-setwd("../results/MESA_Bla/mediation")
+setwd("../results/MESA/mediation")
 
 # List all CSV files in the directory
 files <- list.files(pattern = "\\.csv$")
@@ -34,29 +34,32 @@ mesa_mediation <- do.call(rbind, lapply(files, read_csv_add_filename)) %>%
   separate(col = SourceFile, into = c("new_col1", "nb_exposure", "ind_mediator"), sep = "_") %>%
   separate(col = ind_mediator, into = c("ind_mediator","format")) %>%
   select(-c(1,7,10)) %>%
-  filter(Effect != "Prop. Mediated") %>%
-  mutate(Effect = factor(mesa_mediation$Effect, levels = rev(unique(mesa_mediation$Effect))))
+  filter(Effect != "Prop. Mediated")
+
+mesa_mediation$Effect <- factor(mesa_mediation$Effect, levels =unique(mesa_mediation$Effect))
 
 ```
 
 
 ### plotting
 ```{r}
-plt_nses_raw <- mesa_mediation[(mesa_mediation$nb_exposure == "nSES")&(mesa_mediation$Data == "mesa_bla_raw"), ]
+plt_dat <- mesa_mediation[(mesa_mediation$nb_exposure == "nRS")&(mesa_mediation$Data == "mesa_pre"), ]
 
-ggplot(plt_nses_raw, aes(x = Estimate, y = ind_mediator, color = Effect)) +
-  geom_point(position = position_dodge(width = 0.5), size=3.5) +  # Dodge points for different groups
-  geom_errorbarh(aes(xmin = X95_CI_Lower, xmax = X95_CI_Upper), height = 0.2, position = position_dodge(width = 0.5), size =2) +
-  labs(x = "Effect",
-       y = "Individual potential mediator") +
-  geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
-  theme_minimal() +
-  theme(axis.text = element_text(size = 15),
-        axis.title = element_text(size = 15),
-        legend.text = element_text(size = 15),
-        legend.title = element_text(size = 15)) +
-  ggtitle("nSES as exposure using raw data")
+plot <- ggplot(plt_dat, aes(x = Estimate, y = ind_mediator, color = Effect)) +
+            geom_point(position = position_dodge(width = 0.5), size=3.5) +  
+            geom_errorbarh(aes(xmin = X95_CI_Lower, xmax = X95_CI_Upper), 
+                           height = 0.2, position = position_dodge(width = 0.5), size =2) +
+            labs(x = "Effect",
+                 y = "Individual potential mediator") +
+            geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
+            theme_minimal() +
+            ggtitle("nRS as exposure using MESA preprocessed data") +
+            theme(axis.text = element_text(size = 15),
+                  axis.title = element_text(size = 15),
+                  legend.text = element_text(size = 15),
+                  legend.title = element_text(size = 15),
+                  plot.title = element_text(size = 20))
 
-
+ggsave("nRS_mesa_pre.png", plot = plot, path = "../results/mediation_plots", width = 10, height = 8, dpi = 300)
 ```
 
