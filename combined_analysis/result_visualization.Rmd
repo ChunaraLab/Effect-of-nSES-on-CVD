@@ -9,6 +9,7 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 library(ggplot2)
 library(tidyverse)
+library(dplyr)
 ```
 
 
@@ -96,3 +97,57 @@ plot <- ggplot(plt_dat, aes(x = Mean, y = ind_moderator, color = Data)) +
 ggsave("mesa_bla_nSES.png", plot = plot, path = "../results/moderation_plots", width = 10, height = 8, dpi = 300)
 ```
 
+
+## Missingness
+
+Data
+```{r}
+mesa_raw <- read.csv("../data_processed/MESA/Y_BaselineX_raw_full.csv") %>%
+  select(c("site","nSES","nRS","nFavFood","nPhysFac",
+                     "FamIncome","nutrition","PhysAct","currentSmoker","alc",
+                     "age","race","gender","Diabetes","hdl","totchol","sbp"))
+
+```
+
+
+```{r}
+
+# Step 1: Reshape the data to long format
+long_df <- mesa_raw %>%
+  pivot_longer(cols = -site, names_to = "variable")
+
+# Calculate the total observations per site
+site_counts <- mesa_raw %>%
+  group_by(site) %>%
+  summarise(total_observations = n(), .groups = 'drop')
+
+# Step 2: Calculate missing values per site and variable
+missing_counts <- long_df %>%
+  group_by(site, variable) %>%
+  summarise(missing_count = sum(is.na(value)), .groups = 'drop')
+
+# Step 3: Join the site_counts to get total observations in the missing_counts dataframe
+missing_counts <- missing_counts %>%
+  left_join(site_counts, by = "site")
+
+# Step 4: Rename the 'site' column to the desired format
+missing_counts <- missing_counts %>%
+  mutate(site = paste("site", site, "(n=", total_observations, ")", sep = "_"))
+
+# Pivot to wide format
+wide_df <- missing_counts %>%
+  select(-total_observations) %>%
+  pivot_wider(names_from = site, values_from = missing_count, values_fill = list(missing_count = 0))
+
+# Step 5: Calculate total missing values for each variable
+total_missing <- long_df %>%
+  group_by(variable) %>%
+  summarise(total_missing = sum(is.na(value)), .groups = 'drop')
+
+# Step 6: Combine the total missing with the wide-format data
+final_table <- left_join(wide_df, total_missing, by = "variable")
+
+print(final_table)
+
+write.csv(final_table, "../results/missingness_mesa.csv", row.names = FALSE)
+```
