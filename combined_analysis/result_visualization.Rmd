@@ -18,7 +18,7 @@ library(dplyr)
 ### data
 
 ```{r}
-setwd("../results/MESA/mediation")
+setwd("../results/MESA_Bla/mediation")
 
 # List all CSV files in the directory
 files <- list.files(pattern = "\\.csv$")
@@ -31,20 +31,20 @@ read_csv_add_filename <- function(file) {
 }
 
 # Read each CSV file, add file name, and combine them into one data frame
-mesa_mediation <- do.call(rbind, lapply(files, read_csv_add_filename)) %>%
+mesa_bla_mediation <- do.call(rbind, lapply(files, read_csv_add_filename)) %>%
   separate(col = SourceFile, into = c("new_col1", "nb_exposure", "ind_mediator"), sep = "_") %>%
   separate(col = ind_mediator, into = c("ind_mediator","format")) %>%
   select(-c(1,7,10)) %>%
   filter(Effect != "Prop. Mediated")
 
-mesa_mediation$Effect <- factor(mesa_mediation$Effect, levels =unique(mesa_mediation$Effect))
+mesa_bla_mediation$Effect <- factor(mesa_bla_mediation$Effect, levels =unique(mesa_bla_mediation$Effect))
 
 ```
 
 
 ### plotting
 ```{r}
-plt_dat <- mesa_mediation[(mesa_mediation$nb_exposure == "nRS")&(mesa_mediation$Data == "mesa_pre"), ]
+plt_dat <- mesa_bla_mediation[(mesa_bla_mediation$nb_exposure == "nSES")&(mesa_bla_mediation$Data == "mesa_bla_pre"), ]
 
 plot <- ggplot(plt_dat, aes(x = Estimate, y = ind_mediator, color = Effect)) +
             geom_point(position = position_dodge(width = 0.5), size=3.5) +  
@@ -54,14 +54,14 @@ plot <- ggplot(plt_dat, aes(x = Estimate, y = ind_mediator, color = Effect)) +
                  y = "Individual potential mediator") +
             geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
             theme_minimal() +
-            ggtitle("nRS as exposure using MESA preprocessed data") +
+            ggtitle("nSES as exposure using mesa_bla_pre data") +
             theme(axis.text = element_text(size = 15),
                   axis.title = element_text(size = 15),
                   legend.text = element_text(size = 15),
                   legend.title = element_text(size = 15),
                   plot.title = element_text(size = 20))
 
-ggsave("nRS_mesa_pre.png", plot = plot, path = "../results/mediation_plots", width = 10, height = 8, dpi = 300)
+ggsave("nSES_mesa_bla_pre.png", plot = plot, path = "../results/mediation_plots", width = 10, height = 8, dpi = 300)
 ```
 
 
@@ -69,7 +69,7 @@ ggsave("nRS_mesa_pre.png", plot = plot, path = "../results/mediation_plots", wid
 
 ### data
 ```{r}
-mesa_bla_moderation <- read.csv("../results/MESA_bla/moderation.csv") %>%
+mesa_bla_moderation <- read.csv("../results/MESA_Bla/moderation.csv") %>%
   separate(col = Bootstrap.Result.Name, sep = "_", 
            into = c("bootstrap", "number", "nb_exposure", "ind_moderator")) %>%
   select(-c(1,3,4))
@@ -87,12 +87,13 @@ plot <- ggplot(plt_dat, aes(x = Mean, y = ind_moderator, color = Data)) +
                  y = "Individual potential moderator") +
             geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
             theme_minimal() +
-            ggtitle("Moderation of individual features on nSES") +
+            ggtitle("Moderation of individual features on nSES in mesa_bla") +
             theme(axis.text = element_text(size = 15),
                   axis.title = element_text(size = 15),
                   legend.text = element_text(size = 15),
                   legend.title = element_text(size = 15),
                   plot.title = element_text(size = 20))
+
 
 ggsave("mesa_bla_nSES.png", plot = plot, path = "../results/moderation_plots", width = 10, height = 8, dpi = 300)
 ```
