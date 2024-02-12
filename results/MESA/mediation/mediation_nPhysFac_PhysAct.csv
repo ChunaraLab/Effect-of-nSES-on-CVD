@@ -1,13 +1,17 @@
 ,Data,Effect,Estimate,95_CI_Lower,95_CI_Upper
-0,mesa_raw,ACME,0.01468,1e-05,0.02988
-1,mesa_raw,ADE,0.18134,0.00014,0.35046
-2,mesa_raw,Total Effect,0.18334,0.00445,0.35219
-3,mesa_raw,Prop. Mediated,0.08005,0.05777,0.10153
-4,mesa_imputed,ACME,0.00744,-0.00395,0.01876
-5,mesa_imputed,ADE,0.09626,-0.05128,0.23314
-6,mesa_imputed,Total Effect,0.09769,-0.04903,0.23597
-7,mesa_imputed,Prop. Mediated,0.07615,0.05225,0.09503
-8,mesa_pre,ACME,0.00275,-0.00135,0.00768
-9,mesa_pre,ADE,0.07881,-0.03723,0.18584
-10,mesa_pre,Total Effect,0.07584,-0.03993,0.1842
-11,mesa_pre,Prop. Mediated,0.03632,0.01339,0.05903
+0,mesa_raw,ACME,0.01529,0.00119,0.03094
+1,mesa_raw,ADE,0.1896,0.0153,0.36341
+2,mesa_raw,Total Effect,0.19165,0.01708,0.36371
+3,mesa_raw,Prop. Mediated,0.07977,0.05836,0.10143
+4,mesa_imputed,ACME,0.0071,-0.00462,0.01847
+5,mesa_imputed,ADE,0.09267,-0.0601,0.23146
+6,mesa_imputed,Total Effect,0.09417,-0.05666,0.23169
+7,mesa_imputed,Prop. Mediated,0.07536,0.05502,0.09996
+8,mesa_cate,ACME,0.00618,-0.00094,0.01516
+9,mesa_cate,ADE,0.12418,-0.02196,0.27539
+10,mesa_cate,Total Effect,0.11918,-0.02632,0.2693
+11,mesa_cate,Prop. Mediated,0.05189,0.02646,0.08211
+12,mesa_pre,ACME,0.00283,-0.00111,0.0075
+13,mesa_pre,ADE,0.08196,-0.03024,0.19718
+14,mesa_pre,Total Effect,0.07877,-0.03243,0.1936
+15,mesa_pre,Prop. Mediated,0.03588,0.01483,0.06176
