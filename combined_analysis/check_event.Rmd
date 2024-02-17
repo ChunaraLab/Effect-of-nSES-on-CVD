@@ -76,3 +76,29 @@ ggplot(event_dat[event_dat$cvd_event==1, ], aes(x = cvd_event_t)) +
        x = "Years until CVD",
        y = "Frequency")
 ```
+
+
+## MESA
+
+```{r}
+mesa <- read.csv("/Users/cxt/Documents/research/CVD/Effect-of-nSES-on-CVD/Data/MESA/outcomes/event.csv") %>%
+  mutate(cvd_event_hf = case_when( 
+    chda == 1 | strk == 1 | mi == 1 | chf == 1 ~ 1,
+    is.na(chda) & is.na(strk) & is.na(mi) & is.na(chf) ~ NA_integer_,
+    TRUE ~ 0
+  )) %>%
+  mutate(cvd_event_hf_t = case_when(
+    cvd_event_hf == 1 ~ pmin(chdatt, strktt, mitt, chftt, na.rm = TRUE),
+    TRUE ~ NA_real_ 
+  )) %>%
+  mutate(cvd_event_nohf = case_when( 
+    chda==1 | strk==1 | mi==1 | rca==1 | ang==1 | ptca==1 | cbg==1 | othrev==1 | pvd==1~ 1,
+    is.na(chda) & is.na(strk) & is.na(mi) & is.na(rca) & 
+      is.na(ang) & is.na(ptca) & is.na(cbg) & is.na(othrev) & is.na(pvd) ~ NA_integer_,
+    TRUE ~ 0
+  ))
+ 
+sum(mesa$cvd_event_hf,na.rm = T)
+sum(mesa$cvda,na.rm = T)
+```
+
