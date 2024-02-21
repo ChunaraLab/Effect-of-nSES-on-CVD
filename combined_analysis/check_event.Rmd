@@ -24,23 +24,26 @@ incevtchd <- read.csv("/Users/cxt/Documents/research/CVD/Effect-of-nSES-on-CVD/D
 incevtstroke <- read.csv("/Users/cxt/Documents/research/CVD/Effect-of-nSES-on-CVD/Data/JHS/event_files/incevtstroke.csv") %>%
   rename(years_stroke = years, Status_stroke = Status)
 
+incevthf <- read.csv("/Users/cxt/Documents/research/CVD/Effect-of-nSES-on-CVD/Data/JHS/event_files/incevthfder.csv") %>%
+  rename(years_hf = years, Status_hf = Status, subjid = SUBJID)
 ```
 
 ```{r}
 
 event_dat <- inner_join(incevtchd, incevtstroke, by = "subjid") %>%
+  inner_join(incevthf, by = "subjid") %>%
   mutate(cvd_event = case_when(
-    # If any of CHD, STROKE, or HARDCHD is 1
-    CHD == 1 | stroke == 1 | hardCHD == 1 ~ 1,
+    # If any of CHD, STROKE, HARDCHD, or HF is 1
+    CHD == 1 | stroke == 1 | hardCHD == 1 | hf == 1 ~ 1,
     
     # If all of CHD, STROKE, and HARDCHD are NA
-    is.na(CHD) & is.na(stroke) & is.na(hardCHD) ~ NA_integer_,
+    is.na(CHD) & is.na(stroke) & is.na(hardCHD) & is.na(hf)~ NA_integer_,
     
     # Otherwise
     TRUE ~ 0
   )) %>%
   mutate(cvd_event_t = case_when(
-    cvd_event == 1 ~ pmin(years_chd, hardyears, years_stroke, na.rm = TRUE),
+    cvd_event == 1 ~ pmin(years_chd, hardyears, years_stroke, years_hf, na.rm = TRUE),
     TRUE ~ NA_real_  # Assign NA for cases where cvd_event != 1
   )) %>%
   filter(!is.na(cvd_event))
@@ -64,6 +67,15 @@ ggplot(incevtstroke[incevtstroke$stroke==1, ], aes(x = years_stroke)) +
   labs(title = "Frequency of Years until stroke",
        x = "Years until stroke",
        y = "Frequency")
+```
+```{r}
+ggplot(incevthf[incevthf["hf"]==1, ], aes(x = years_hf)) +
+  geom_histogram(binwidth = 1, color = "black", fill = "#90EE90") +
+  theme_minimal() +
+  labs(title = "Frequency of Years until HF",
+       x = "Years until HF",
+       y = "Frequency")
+
 ```
 
 ```{r}
