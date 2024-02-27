@@ -1,0 +1,46 @@
+---
+title: "Doubly Robust Estimator"
+author: "Xiaoting Chen"
+date: "2024-02-26"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyr)
+library(ggplot2)
+library(dplyr)
+```
+
+## Data
+
+
+```{r}
+mesa <- read.csv("../data_processed/MESA/mesa_std.csv") %>% na.omit()
+mesa_bla <- mesa[mesa["race"]==3,]
+jhs <- read.csv("../data_processed/JHS/jhs_std.csv") %>% na.omit()
+```
+
+## Doubly robust
+
+
+### kennedy 2017
+```{r}
+library(npcausal)
+```
+
+```{r}
+n <- 500
+x <- as.matrix(jhs[,-c(1,2,6,13)])   # covariates
+a <- jhs[['nSES']]
+y <- jhs[['Y_10y']]
+```
+
+```{r}
+ce.res <- ctseff(y, a, x, bw.seq = seq(.2, 2, length.out = 100))
+plot.ctseff(ce.res)
+```
+
