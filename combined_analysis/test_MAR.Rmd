@@ -1,0 +1,65 @@
+---
+title: "MAR test"
+author: "Xiaoting Chen"
+date: "2024-03-05"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(tidyr)
+```
+
+
+## data
+
+```{r}
+mesa_std <- read.csv('../data_processed/MESA/mesa_std.csv')
+jhs_std <- read.csv('../data_processed/JHS/jhs_std.csv')
+```
+
+```{r}
+mesa_std$missing <- ifelse(rowSums(is.na(mesa_std)) > 0, 1, 0)
+jhs_std$missing <- ifelse(rowSums(is.na(jhs_std)) > 0, 1, 0)
+
+sum(mesa_std$missing)
+sum(jhs_std$missing)
+```
+
+## MAR
+
+missing ~ covariates
+```{r warning=FALSE}
+# Perform logistic regression
+model <- glm(missing ~ ., data = jhs_std[,-1], family = "binomial")
+
+# summary(model)
+# It gives us z-values. For calculating p-values from z-values : 
+
+# Calculate the p-values from the z-values for each predictor variable
+coefficients <- summary(model)$coefficients[, "Estimate"]
+standard_errors <- summary(model)$coefficients[, "Std. Error"]
+z_values <- coefficients / standard_errors
+p_values <- 2 * (1 - pnorm(abs(z_values)))
+
+# Compare the p-values with the significance level (e.g., 0.05)
+significance_level <- 0.05
+is_mar <- all(p_values > significance_level)
+
+# Print the p-values and conclusion
+print("P-Values:")
+print(p_values)
+
+print("Conclusion:")
+if (is_mar) {
+  print("The data is Missing at Random (MAR).")
+} else {
+  print("The data is not Missing at Random (not MAR).")
+}
+```
+
+
