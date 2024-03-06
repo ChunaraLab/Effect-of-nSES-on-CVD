@@ -62,4 +62,9 @@ if (is_mar) {
 }
 ```
 
+### using packages
 
+```{r}
+library(misty)
+na.test(mesa_std[,-c(1,3)])
+```
