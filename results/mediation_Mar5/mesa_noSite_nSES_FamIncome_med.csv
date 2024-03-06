@@ -1,0 +1,5 @@
+,Data,Effect,Estimate,95_CI_Lower,95_CI_Upper
+0,mesa_std,ACME,-0.0324,-0.07419,0.00615
+1,mesa_std,ADE,0.10188,-0.01953,0.23295
+2,mesa_std,Total Effect,0.1005,-0.01259,0.23232
+3,mesa_std,Prop. Mediated,-0.3224,-0.68354,0.37306

@@ -1,0 +1,5 @@
+,Data,Effect,Estimate,95_CI_Lower,95_CI_Upper
+0,jhs_std,ACME,2e-05,-0.00133,0.00148
+1,jhs_std,ADE,-0.01079,-0.1441,0.13471
+2,jhs_std,Total Effect,-0.01079,-0.14398,0.13414
+3,jhs_std,Prop. Mediated,-0.00215,-0.0191,0.01491

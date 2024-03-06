@@ -1,0 +1,21 @@
+,Data,Bootstrap Result Name,Mean,2.5%,97.5%
+0,mesa_std,bp_1_nSES_FamIncome,0.026664966399377387,-0.07613,0.13601
+1,mesa_std,bp_2_nFavFood_FamIncome,0.08588502439239701,-0.02883,0.19633
+2,mesa_std,bp_3_nPhysFac_FamIncome,-0.02610911631769487,-0.12929,0.07735
+3,mesa_std,bp_4_nRS_FamIncome,-0.006664680072672139,-0.09872,0.09491
+4,mesa_std,bp_5_nSES_nutrition,-0.12090611225891228,-0.3282,0.08006
+5,mesa_std,bp_6_nFavFood_nutrition,0.08241300547302557,-0.15459,0.30104
+6,mesa_std,bp_7_nPhysFac_nutrition,0.03611755438311919,-0.15654,0.22064
+7,mesa_std,bp_8_nRS_nutrition,-0.04309292739788585,-0.23885,0.13239
+8,mesa_std,bp_9_nSES_PhysAct,0.02906707225177299,-0.0912,0.15827
+9,mesa_std,bp_10_nFavFood_PhysAct,0.0008876962467871914,-0.13698,0.14919
+10,mesa_std,bp_11_nPhysFac_PhysAct,-0.02620275269001271,-0.1581,0.12125
+11,mesa_std,bp_12_nRS_PhysAct,0.08638107087576012,-0.03107,0.2184
+12,mesa_std,bp_13_nSES_currentSmoker,-0.005938184027920111,-0.16065,0.1598
+13,mesa_std,bp_14_nFavFood_currentSmoker,-0.16916857814503822,-0.34207,0.00509
+14,mesa_std,bp_15_nPhysFac_currentSmoker,-0.10084196477027772,-0.2724,0.05285
+15,mesa_std,bp_16_nRS_currentSmoker,0.01914049119378527,-0.11714,0.14848
+16,mesa_std,bp_17_nSES_alc,0.04293744333780036,-0.18458,0.26276
+17,mesa_std,bp_18_nFavFood_alc,-0.15893538692273654,-0.37831,0.07066
+18,mesa_std,bp_19_nPhysFac_alc,-0.18172644947769803,-0.38846,0.07694
+19,mesa_std,bp_20_nRS_alc,0.0643487726906396,-0.11827,0.24871
