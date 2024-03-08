@@ -21,10 +21,11 @@ library(dplyr)
 mesa_event <- read.csv("/Users/cxt/Documents/research/CVD/Effect-of-nSES-on-CVD/Data/MESA/outcomes/event.csv") 
 ```
 
+create "cvd_10y_HF"
 ```{r}
 mesa_event <- mesa_event %>%
-  mutate(cvd_event = case_when(
-    # If any of CHD, STROKE, HARDCHD, or HF, cvd_event = 1
+  mutate(cvd_event_HF = case_when(
+    # If any of CHD, STROKE, HARDCHD, or HF, cvd_event_HF = 1
     mi == 1 | strk == 1 | chdh == 1 | chda == 1 | chf == 1 ~ 1,
 
     # If all of CHD, STROKE, HARDCHD, and hf are NA
@@ -33,25 +34,53 @@ mesa_event <- mesa_event %>%
     # Otherwise
     TRUE ~ 0
   )) %>%
-  mutate(cvd_event_t = case_when(
-    cvd_event == 1 ~ pmin(mitt, strktt, chdhtt, chdatt, chftt, na.rm = TRUE),
-    TRUE ~ NA_real_  # Assign NA for cases where cvd_event != 1
+  mutate(cvd_event_HF_t = case_when(
+    cvd_event_HF == 1 ~ pmin(mitt, strktt, chdhtt, chdatt, chftt, na.rm = TRUE),
+    TRUE ~ NA_real_  # Assign NA for cases where cvd_event_HF != 1
   )) %>%
-  filter(!is.na(cvd_event)) %>%
-  mutate(cvd_10y = case_when(
-      cvd_event == 1 & cvd_event_t <= 3650 ~ 1,
+  filter(!is.na(cvd_event_HF)) %>%
+  mutate(cvd_10y_HF = case_when(
+      cvd_event_HF == 1 & cvd_event_HF_t <= 3650 ~ 1,
       TRUE ~ 0  # Otherwise, set cvd_10y to 0
     ))
 
 ```
 
+
+create "cvd_10y_noHF"
 ```{r}
-sum(mesa_event$cvd_10y)
+mesa_event <- mesa_event %>%
+  mutate(cvd_event_noHF = case_when(
+    # If any of CHD, STROKE, or HARDCHD, cvd_event_noHF = 1
+    mi == 1 | strk == 1 | chdh == 1 | chda == 1 ~ 1,
+
+    # If all of CHD, STROKE, HARDCHD, and hf are NA
+    is.na(mi) & is.na(strk) & is.na(chdh) & is.na(chda) ~ NA_integer_,
+
+    # Otherwise
+    TRUE ~ 0
+  )) %>%
+  mutate(cvd_event_noHF_t = case_when(
+    cvd_event_noHF == 1 ~ pmin(mitt, strktt, chdhtt, chdatt, na.rm = TRUE),
+    TRUE ~ NA_real_  # Assign NA for cases where cvd_event_noHF != 1
+  )) %>%
+  filter(!is.na(cvd_event_noHF)) %>%
+  mutate(cvd_10y_noHF = case_when(
+      cvd_event_noHF == 1 & cvd_event_noHF_t <= 3650 ~ 1,
+      TRUE ~ 0  # Otherwise, set cvd_10y to 0
+    ))
+
+```
+
+
+```{r}
+sum(mesa_event$cvd_10y_HF)
+sum(mesa_event$cvd_10y_noHF)
 ```
 
 ```{r}
 # export 
 
-write.csv(mesa_event, "../data_processed/MESA/mesa_event_combined.csv", row.names = FALSE)
+write.csv(mesa_event, "../data_processed/MESA/mesa_event.csv", row.names = FALSE)
 
 ```
