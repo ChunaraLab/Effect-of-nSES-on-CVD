@@ -35,7 +35,7 @@ sum(jhs_std$missing)
 missing ~ covariates
 ```{r warning=FALSE}
 # Perform logistic regression
-model <- glm(missing ~ ., data = jhs_std[,-1], family = "binomial")
+model <- glm(missing ~ ., data = jhs_std[,-c(1,2)], family = "binomial")
 
 # summary(model)
 # It gives us z-values. For calculating p-values from z-values : 
@@ -62,9 +62,9 @@ if (is_mar) {
 }
 ```
 
-### using packages
+Y ~ missing
 
 ```{r}
-library(misty)
-na.test(mesa_std[,-c(1,3)])
+model_y <- glm(Y_10y ~ missing, data = mesa_std, family = "binomial")
+summary(model_y)
 ```
