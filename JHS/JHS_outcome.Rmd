@@ -17,6 +17,7 @@ library(dplyr)
 
 ## JHS event
 
+data
 ```{r}
 incevtchd <- read.csv("/Users/cxt/Documents/research/CVD/Effect-of-nSES-on-CVD/Data/JHS/event_files/incevtchd.csv") %>%
   rename(years_chd = years, Status_chd = Status)
@@ -28,11 +29,12 @@ incevthf <- read.csv("/Users/cxt/Documents/research/CVD/Effect-of-nSES-on-CVD/Da
   rename(years_hf = years, Status_hf = Status, subjid = SUBJID)
 ```
 
+create "cvd_10y_HF"
 ```{r}
 event_dat <- inner_join(incevtchd, incevtstroke, by = "subjid") %>%
   inner_join(incevthf, by = "subjid") %>%
-  mutate(cvd_event = case_when(
-    # If any of CHD, STROKE, HARDCHD, or HF, cvd_event = 1
+  mutate(cvd_event_HF = case_when(
+    # If any of CHD, STROKE, HARDCHD, or HF, cvd_event_HF = 1
     CHD == 1 | stroke == 1 | hardCHD == 1 | hf == 1 ~ 1,
 
     # If all of CHD, STROKE, HARDCHD, and hf are NA
@@ -41,21 +43,44 @@ event_dat <- inner_join(incevtchd, incevtstroke, by = "subjid") %>%
     # Otherwise
     TRUE ~ 0
   )) %>%
-  mutate(cvd_event_t = case_when(
-    cvd_event == 1 ~ pmin(years_chd, hardyears, years_stroke, years_hf, na.rm = TRUE),
-    TRUE ~ NA_real_  # Assign NA for cases where cvd_event != 1
+  mutate(cvd_event_HF_t = case_when(
+    cvd_event_HF == 1 ~ pmin(years_chd, hardyears, years_stroke, years_hf, na.rm = TRUE),
+    TRUE ~ NA_real_  # Assign NA for cases where cvd_event_HF != 1
   )) %>%
-  filter(!is.na(cvd_event)) %>%
-  mutate(cvd_10y = case_when(
-      cvd_event == 1 & cvd_event_t <= 10 ~ 1,
+  filter(!is.na(cvd_event_HF)) %>%
+  mutate(cvd_10y_HF = case_when(
+      cvd_event_HF == 1 & cvd_event_HF_t <= 10 ~ 1,
       TRUE ~ 0  # Otherwise, set cvd_10y to 0
     ))
 
 ```
 
+create "cvd_10y_noHF"
 ```{r}
-# export 
+event_dat <- event_dat %>%
+  mutate(cvd_event_noHF = case_when(
+    # If any of CHD, STROKE, or HARDCHD, cvd_event_noHF = 1
+    CHD == 1 | stroke == 1 | hardCHD == 1 ~ 1,
 
-write.csv(event_dat, "../data_processed/JHS/jhs_event_combined.csv", row.names = FALSE)
+    # If all of CHD, STROKE, HARDCHD, and hf are NA
+    is.na(CHD) & is.na(stroke) & is.na(hardCHD) ~ NA_integer_,
 
+    # Otherwise
+    TRUE ~ 0
+  )) %>%
+  mutate(cvd_event_noHF_t = case_when(
+    cvd_event_noHF == 1 ~ pmin(years_chd, hardyears, years_stroke, na.rm = TRUE),
+    TRUE ~ NA_real_  # Assign NA for cases where cvd_event != 1
+  )) %>%
+  filter(!is.na(cvd_event_noHF)) %>%
+  mutate(cvd_10y_noHF = case_when(
+      cvd_event_noHF == 1 & cvd_event_noHF_t <= 10 ~ 1,
+      TRUE ~ 0  # Otherwise, set cvd_10y to 0
+    ))
+
+```
+
+export
+```{r}
+write.csv(event_dat, "../data_processed/JHS/jhs_event.csv", row.names = FALSE)
 ```
