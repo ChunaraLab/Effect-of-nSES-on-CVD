@@ -1,0 +1,321 @@
+,Data,X,M,other,Effect,Estimate,95_CI_Lower,95_CI_Upper
+0,mesa_std,nSES,FamIncome,race_site,ACME,-0.02264,-0.0605,0.01378
+1,mesa_std,nSES,FamIncome,race_site,ADE,0.07127,-0.04305,0.1892
+2,mesa_std,nSES,FamIncome,race_site,Total Effect,0.09581,-0.01738,0.20664
+3,mesa_std,nSES,FamIncome,race_site,Prop. Mediated,-0.23629,-0.57049,0.48661
+4,mesa_std,nSES,nutrition,race_site,ACME,-0.00398,-0.00972,0.00144
+5,mesa_std,nSES,nutrition,race_site,ADE,0.08565,-0.03155,0.19479
+6,mesa_std,nSES,nutrition,race_site,Total Effect,0.09397,-0.02262,0.20275
+7,mesa_std,nSES,nutrition,race_site,Prop. Mediated,-0.04236,-0.06713,-0.01771
+8,mesa_std,nSES,PhysAct,race_site,ACME,-0.01086,-0.02659,0.00231
+9,mesa_std,nSES,PhysAct,race_site,ADE,0.08361,-0.01666,0.19908
+10,mesa_std,nSES,PhysAct,race_site,Total Effect,0.09489,-0.0073,0.21631
+11,mesa_std,nSES,PhysAct,race_site,Prop. Mediated,-0.11444,-0.17158,-0.00338
+12,mesa_std,nSES,currentSmoker,race_site,ACME,0.00373,-0.0007,0.00908
+13,mesa_std,nSES,currentSmoker,race_site,ADE,0.09191,-0.02099,0.19904
+14,mesa_std,nSES,currentSmoker,race_site,Total Effect,0.09469,-0.01825,0.20228
+15,mesa_std,nSES,currentSmoker,race_site,Prop. Mediated,0.03941,0.0207,0.05752
+16,mesa_std,nSES,alc,race_site,ACME,-0.00715,-0.01661,0.00139
+17,mesa_std,nSES,alc,race_site,ADE,0.09205,-0.01826,0.2077
+18,mesa_std,nSES,alc,race_site,Total Effect,0.0949,-0.01439,0.21182
+19,mesa_std,nSES,alc,race_site,Prop. Mediated,-0.0753,-0.11932,-0.02453
+20,mesa_std,nFavFood,FamIncome,race_site,ACME,0.00334,-0.00427,0.01188
+21,mesa_std,nFavFood,FamIncome,race_site,ADE,-0.05255,-0.17813,0.06728
+22,mesa_std,nFavFood,FamIncome,race_site,Total Effect,-0.03657,-0.15438,0.07466
+23,mesa_std,nFavFood,FamIncome,race_site,Prop. Mediated,-0.0912,-0.28713,0.09436
+24,mesa_std,nFavFood,nutrition,race_site,ACME,-0.00081,-0.00542,0.00373
+25,mesa_std,nFavFood,nutrition,race_site,ADE,-0.02229,-0.14423,0.09546
+26,mesa_std,nFavFood,nutrition,race_site,Total Effect,-0.03442,-0.15428,0.08354
+27,mesa_std,nFavFood,nutrition,race_site,Prop. Mediated,0.0235,-0.04951,0.13728
+28,mesa_std,nFavFood,PhysAct,race_site,ACME,-0.00105,-0.0056,0.0025
+29,mesa_std,nFavFood,PhysAct,race_site,ADE,-0.03338,-0.14772,0.0773
+30,mesa_std,nFavFood,PhysAct,race_site,Total Effect,-0.03417,-0.14867,0.07631
+31,mesa_std,nFavFood,PhysAct,race_site,Prop. Mediated,0.03061,0.00485,0.05473
+32,mesa_std,nFavFood,currentSmoker,race_site,ACME,0.00016,-0.00108,0.00185
+33,mesa_std,nFavFood,currentSmoker,race_site,ADE,-0.03661,-0.1465,0.07097
+34,mesa_std,nFavFood,currentSmoker,race_site,Total Effect,-0.03611,-0.1459,0.06824
+35,mesa_std,nFavFood,currentSmoker,race_site,Prop. Mediated,-0.00432,-0.02194,0.01822
+36,mesa_std,nFavFood,alc,race_site,ACME,0.00034,-0.00091,0.00191
+37,mesa_std,nFavFood,alc,race_site,ADE,-0.03703,-0.15766,0.07449
+38,mesa_std,nFavFood,alc,race_site,Total Effect,-0.0368,-0.15749,0.07407
+39,mesa_std,nFavFood,alc,race_site,Prop. Mediated,-0.00932,-0.02299,0.00413
+40,mesa_std,nPhysFac,FamIncome,race_site,ACME,0.00034,-0.01076,0.01026
+41,mesa_std,nPhysFac,FamIncome,race_site,ADE,0.00344,-0.10776,0.10478
+42,mesa_std,nPhysFac,FamIncome,race_site,Total Effect,-0.00186,-0.11438,0.09702
+43,mesa_std,nPhysFac,FamIncome,race_site,Prop. Mediated,-0.18348,-0.04696,0.25217
+44,mesa_std,nPhysFac,nutrition,race_site,ACME,0.00055,-0.00481,0.00574
+45,mesa_std,nPhysFac,nutrition,race_site,ADE,0.01155,-0.10685,0.11441
+46,mesa_std,nPhysFac,nutrition,race_site,Total Effect,-0.00029,-0.11854,0.10281
+47,mesa_std,nPhysFac,nutrition,race_site,Prop. Mediated,-1.8749,-0.24759,0.31023
+48,mesa_std,nPhysFac,PhysAct,race_site,ACME,0.00019,-0.00831,0.00776
+49,mesa_std,nPhysFac,PhysAct,race_site,ADE,0.00253,-0.11417,0.0951
+50,mesa_std,nPhysFac,PhysAct,race_site,Total Effect,-0.00282,-0.12057,0.08948
+51,mesa_std,nPhysFac,PhysAct,race_site,Prop. Mediated,-0.06791,-0.01887,0.21263
+52,mesa_std,nPhysFac,currentSmoker,race_site,ACME,7e-05,-0.00183,0.00224
+53,mesa_std,nPhysFac,currentSmoker,race_site,ADE,-0.00482,-0.11645,0.1016
+54,mesa_std,nPhysFac,currentSmoker,race_site,Total Effect,-0.00572,-0.11441,0.10001
+55,mesa_std,nPhysFac,currentSmoker,race_site,Prop. Mediated,-0.01286,-0.03727,0.00505
+56,mesa_std,nPhysFac,alc,race_site,ACME,-7e-05,-0.00441,0.00338
+57,mesa_std,nPhysFac,alc,race_site,ADE,-0.0021,-0.12246,0.09583
+58,mesa_std,nPhysFac,alc,race_site,Total Effect,-0.00364,-0.12415,0.09351
+59,mesa_std,nPhysFac,alc,race_site,Prop. Mediated,0.0203,-0.00084,0.05825
+60,mesa_std,nRS,FamIncome,race_site,ACME,-0.01645,-0.02947,-0.00415
+61,mesa_std,nRS,FamIncome,race_site,ADE,0.16437,0.04246,0.2722
+62,mesa_std,nRS,FamIncome,race_site,Total Effect,0.17171,0.05337,0.28115
+63,mesa_std,nRS,FamIncome,race_site,Prop. Mediated,-0.0958,-0.12185,-0.06964
+64,mesa_std,nRS,nutrition,race_site,ACME,-0.00174,-0.00505,0.00039
+65,mesa_std,nRS,nutrition,race_site,ADE,0.1665,0.05167,0.27641
+66,mesa_std,nRS,nutrition,race_site,Total Effect,0.17147,0.0577,0.28364
+67,mesa_std,nRS,nutrition,race_site,Prop. Mediated,-0.01012,-0.02281,0.00259
+68,mesa_std,nRS,PhysAct,race_site,ACME,-0.00289,-0.0079,0.00096
+69,mesa_std,nRS,PhysAct,race_site,ADE,0.16949,0.05313,0.27741
+70,mesa_std,nRS,PhysAct,race_site,Total Effect,0.16991,0.05361,0.2777
+71,mesa_std,nRS,PhysAct,race_site,Prop. Mediated,-0.01698,-0.03846,0.00574
+72,mesa_std,nRS,currentSmoker,race_site,ACME,0.00955,0.00294,0.01695
+73,mesa_std,nRS,currentSmoker,race_site,ADE,0.16445,0.05575,0.28015
+74,mesa_std,nRS,currentSmoker,race_site,Total Effect,0.16748,0.06034,0.28211
+75,mesa_std,nRS,currentSmoker,race_site,Prop. Mediated,0.05702,0.03681,0.07641
+76,mesa_std,nRS,alc,race_site,ACME,-0.00555,-0.00981,-0.00178
+77,mesa_std,nRS,alc,race_site,ADE,0.17248,0.05931,0.28078
+78,mesa_std,nRS,alc,race_site,Total Effect,0.17265,0.0612,0.2817
+79,mesa_std,nRS,alc,race_site,Prop. Mediated,-0.03213,-0.04624,-0.01864
+80,mesa_std,nSES,FamIncome,race,ACME,-0.02268,-0.06146,0.01356
+81,mesa_std,nSES,FamIncome,race,ADE,0.07145,-0.043,0.19469
+82,mesa_std,nSES,FamIncome,race,Total Effect,0.09115,-0.01299,0.20819
+83,mesa_std,nSES,FamIncome,race,Prop. Mediated,-0.24883,-0.69481,0.3702
+84,mesa_std,nSES,nutrition,race,ACME,-0.00394,-0.00945,0.00114
+85,mesa_std,nSES,nutrition,race,ADE,0.08382,-0.02441,0.20069
+86,mesa_std,nSES,nutrition,race,Total Effect,0.09248,-0.01707,0.2071
+87,mesa_std,nSES,nutrition,race,Prop. Mediated,-0.04266,-0.07058,-0.01048
+88,mesa_std,nSES,PhysAct,race,ACME,-0.01096,-0.02606,0.00294
+89,mesa_std,nSES,PhysAct,race,ADE,0.08438,-0.02304,0.19982
+90,mesa_std,nSES,PhysAct,race,Total Effect,0.09429,-0.01277,0.20635
+91,mesa_std,nSES,PhysAct,race,Prop. Mediated,-0.11629,-0.21057,0.00312
+92,mesa_std,nSES,currentSmoker,race,ACME,0.0038,-0.00064,0.00906
+93,mesa_std,nSES,currentSmoker,race,ADE,0.09439,-0.01439,0.20196
+94,mesa_std,nSES,currentSmoker,race,Total Effect,0.09671,-0.01142,0.20543
+95,mesa_std,nSES,currentSmoker,race,Prop. Mediated,0.03926,0.0211,0.05735
+96,mesa_std,nSES,alc,race,ACME,-0.00699,-0.016,0.00126
+97,mesa_std,nSES,alc,race,ADE,0.09059,-0.01507,0.19812
+98,mesa_std,nSES,alc,race,Total Effect,0.09395,-0.01391,0.20505
+99,mesa_std,nSES,alc,race,Prop. Mediated,-0.07438,-0.11017,-0.03987
+100,mesa_std,nFavFood,FamIncome,race,ACME,0.00078,-0.00592,0.00847
+101,mesa_std,nFavFood,FamIncome,race,ADE,-0.01235,-0.12978,0.09414
+102,mesa_std,nFavFood,FamIncome,race,Total Effect,-0.00237,-0.12161,0.10249
+103,mesa_std,nFavFood,FamIncome,race,Prop. Mediated,-0.32873,-0.28914,0.0916
+104,mesa_std,nFavFood,nutrition,race,ACME,0.0002,-0.00386,0.00432
+105,mesa_std,nFavFood,nutrition,race,ADE,0.00538,-0.1063,0.10587
+106,mesa_std,nFavFood,nutrition,race,Total Effect,-0.0044,-0.1176,0.09712
+107,mesa_std,nFavFood,nutrition,race,Prop. Mediated,-0.04443,-0.0895,0.11685
+108,mesa_std,nFavFood,PhysAct,race,ACME,-0.00015,-0.00453,0.0041
+109,mesa_std,nFavFood,PhysAct,race,ADE,-0.00467,-0.12773,0.11615
+110,mesa_std,nFavFood,PhysAct,race,Total Effect,-0.00644,-0.12884,0.11413
+111,mesa_std,nFavFood,PhysAct,race,Prop. Mediated,0.02275,0.00658,0.05398
+112,mesa_std,nFavFood,currentSmoker,race,ACME,2e-05,-0.00137,0.00147
+113,mesa_std,nFavFood,currentSmoker,race,ADE,-0.00412,-0.12118,0.1085
+114,mesa_std,nFavFood,currentSmoker,race,Total Effect,-0.0028,-0.11797,0.10758
+115,mesa_std,nFavFood,currentSmoker,race,Prop. Mediated,-0.00721,-0.02443,0.01734
+116,mesa_std,nFavFood,alc,race,ACME,2e-05,-0.00146,0.00173
+117,mesa_std,nFavFood,alc,race,ADE,-0.00244,-0.12751,0.11109
+118,mesa_std,nFavFood,alc,race,Total Effect,-0.00183,-0.12753,0.11161
+119,mesa_std,nFavFood,alc,race,Prop. Mediated,-0.01229,-0.02403,0.00513
+120,mesa_std,nPhysFac,FamIncome,race,ACME,0.00097,-0.01033,0.01118
+121,mesa_std,nPhysFac,FamIncome,race,ADE,0.00973,-0.09876,0.11435
+122,mesa_std,nPhysFac,FamIncome,race,Total Effect,0.00375,-0.10404,0.10693
+123,mesa_std,nPhysFac,FamIncome,race,Prop. Mediated,0.2592,-0.14884,0.31422
+124,mesa_std,nPhysFac,nutrition,race,ACME,0.00067,-0.00503,0.00597
+125,mesa_std,nPhysFac,nutrition,race,ADE,0.01421,-0.10771,0.12025
+126,mesa_std,nPhysFac,nutrition,race,Total Effect,0.00246,-0.11846,0.10698
+127,mesa_std,nPhysFac,nutrition,race,Prop. Mediated,0.27173,-0.08869,0.3243
+128,mesa_std,nPhysFac,PhysAct,race,ACME,0.00089,-0.00838,0.00871
+129,mesa_std,nPhysFac,PhysAct,race,ADE,0.01172,-0.11281,0.11231
+130,mesa_std,nPhysFac,PhysAct,race,Total Effect,0.00636,-0.11923,0.10792
+131,mesa_std,nPhysFac,PhysAct,race,Prop. Mediated,0.14005,-0.03891,0.20317
+132,mesa_std,nPhysFac,currentSmoker,race,ACME,-6e-05,-0.00223,0.00213
+133,mesa_std,nPhysFac,currentSmoker,race,ADE,0.00361,-0.11929,0.10633
+134,mesa_std,nPhysFac,currentSmoker,race,Total Effect,0.00322,-0.11691,0.10443
+135,mesa_std,nPhysFac,currentSmoker,race,Prop. Mediated,-0.0172,-0.03523,0.0025
+136,mesa_std,nPhysFac,alc,race,ACME,0.00027,-0.00384,0.00386
+137,mesa_std,nPhysFac,alc,race,ADE,0.00776,-0.10546,0.10482
+138,mesa_std,nPhysFac,alc,race,Total Effect,0.00608,-0.11049,0.10232
+139,mesa_std,nPhysFac,alc,race,Prop. Mediated,0.0446,-0.00104,0.06551
+140,mesa_std,nRS,FamIncome,race,ACME,-0.01236,-0.02435,-0.00156
+141,mesa_std,nRS,FamIncome,race,ADE,0.12353,0.01586,0.2287
+142,mesa_std,nRS,FamIncome,race,Total Effect,0.13064,0.02406,0.23598
+143,mesa_std,nRS,FamIncome,race,Prop. Mediated,-0.09462,-0.12486,-0.06302
+144,mesa_std,nRS,nutrition,race,ACME,-0.00134,-0.00424,0.00053
+145,mesa_std,nRS,nutrition,race,ADE,0.13157,0.02119,0.23497
+146,mesa_std,nRS,nutrition,race,Total Effect,0.13361,0.02599,0.23632
+147,mesa_std,nRS,nutrition,race,Prop. Mediated,-0.01005,-0.024,0.00448
+148,mesa_std,nRS,PhysAct,race,ACME,-0.00216,-0.00685,0.00118
+149,mesa_std,nRS,PhysAct,race,ADE,0.13251,0.01306,0.23364
+150,mesa_std,nRS,PhysAct,race,Total Effect,0.13349,0.01393,0.23309
+151,mesa_std,nRS,PhysAct,race,Prop. Mediated,-0.01618,-0.03881,0.00818
+152,mesa_std,nRS,currentSmoker,race,ACME,0.00765,0.00096,0.01547
+153,mesa_std,nRS,currentSmoker,race,ADE,0.13079,0.01537,0.23685
+154,mesa_std,nRS,currentSmoker,race,Total Effect,0.13243,0.017,0.2373
+155,mesa_std,nRS,currentSmoker,race,Prop. Mediated,0.05774,0.03787,0.07756
+156,mesa_std,nRS,alc,race,ACME,-0.00431,-0.00838,-0.00076
+157,mesa_std,nRS,alc,race,ADE,0.13292,0.02335,0.23287
+158,mesa_std,nRS,alc,race,Total Effect,0.13256,0.02491,0.2315
+159,mesa_std,nRS,alc,race,Prop. Mediated,-0.03248,-0.04575,-0.0192
+160,mesa_std,nSES,FamIncome,site,ACME,-0.01573,-0.05524,0.02042
+161,mesa_std,nSES,FamIncome,site,ADE,0.04945,-0.06658,0.17245
+162,mesa_std,nSES,FamIncome,site,Total Effect,0.07335,-0.0353,0.18384
+163,mesa_std,nSES,FamIncome,site,Prop. Mediated,-0.21444,-1.28107,0.60997
+164,mesa_std,nSES,nutrition,site,ACME,-0.00317,-0.0088,0.00194
+165,mesa_std,nSES,nutrition,site,ADE,0.06771,-0.04122,0.17915
+166,mesa_std,nSES,nutrition,site,Total Effect,0.07551,-0.03236,0.18609
+167,mesa_std,nSES,nutrition,site,Prop. Mediated,-0.04198,-0.08132,0.0053
+168,mesa_std,nSES,PhysAct,site,ACME,-0.00867,-0.0239,0.00467
+169,mesa_std,nSES,PhysAct,site,ADE,0.06643,-0.03709,0.18132
+170,mesa_std,nSES,PhysAct,site,Total Effect,0.07724,-0.02649,0.19209
+171,mesa_std,nSES,PhysAct,site,Prop. Mediated,-0.11222,-0.25703,0.08728
+172,mesa_std,nSES,currentSmoker,site,ACME,0.00284,-0.00156,0.00847
+173,mesa_std,nSES,currentSmoker,site,ADE,0.07076,-0.04171,0.18369
+174,mesa_std,nSES,currentSmoker,site,Total Effect,0.07514,-0.03514,0.18868
+175,mesa_std,nSES,currentSmoker,site,Prop. Mediated,0.03779,0.01312,0.06442
+176,mesa_std,nSES,alc,site,ACME,-0.00559,-0.01499,0.00286
+177,mesa_std,nSES,alc,site,ADE,0.07234,-0.0363,0.18736
+178,mesa_std,nSES,alc,site,Total Effect,0.07358,-0.02873,0.18557
+179,mesa_std,nSES,alc,site,Prop. Mediated,-0.07593,-0.14483,-0.0129
+180,mesa_std,nFavFood,FamIncome,site,ACME,0.00316,-0.00423,0.01183
+181,mesa_std,nFavFood,FamIncome,site,ADE,-0.05039,-0.17991,0.06335
+182,mesa_std,nFavFood,FamIncome,site,Total Effect,-0.03611,-0.16315,0.07134
+183,mesa_std,nFavFood,FamIncome,site,Prop. Mediated,-0.08755,-0.26879,0.13564
+184,mesa_std,nFavFood,nutrition,site,ACME,-0.00074,-0.00549,0.00338
+185,mesa_std,nFavFood,nutrition,site,ADE,-0.02027,-0.14006,0.09297
+186,mesa_std,nFavFood,nutrition,site,Total Effect,-0.03232,-0.15401,0.08174
+187,mesa_std,nFavFood,nutrition,site,Prop. Mediated,0.02297,-0.05949,0.17481
+188,mesa_std,nFavFood,PhysAct,site,ACME,-0.00102,-0.00567,0.00264
+189,mesa_std,nFavFood,PhysAct,site,ADE,-0.03272,-0.14529,0.08215
+190,mesa_std,nFavFood,PhysAct,site,Total Effect,-0.03389,-0.14752,0.08157
+191,mesa_std,nFavFood,PhysAct,site,Prop. Mediated,0.03009,0.00663,0.05586
+192,mesa_std,nFavFood,currentSmoker,site,ACME,0.00015,-0.00128,0.00195
+193,mesa_std,nFavFood,currentSmoker,site,ADE,-0.03329,-0.15282,0.07686
+194,mesa_std,nFavFood,currentSmoker,site,Total Effect,-0.0327,-0.15095,0.07979
+195,mesa_std,nFavFood,currentSmoker,site,Prop. Mediated,-0.00464,-0.02616,0.01562
+196,mesa_std,nFavFood,alc,site,ACME,0.00032,-0.00096,0.00204
+197,mesa_std,nFavFood,alc,site,ADE,-0.03409,-0.15351,0.07379
+198,mesa_std,nFavFood,alc,site,Total Effect,-0.03395,-0.15257,0.07501
+199,mesa_std,nFavFood,alc,site,Prop. Mediated,-0.00929,-0.02404,0.00477
+200,mesa_std,nPhysFac,FamIncome,site,ACME,0.0016,-0.00931,0.01112
+201,mesa_std,nPhysFac,FamIncome,site,ADE,0.01615,-0.08976,0.10729
+202,mesa_std,nPhysFac,FamIncome,site,Total Effect,0.01109,-0.09356,0.10065
+203,mesa_std,nPhysFac,FamIncome,site,Prop. Mediated,0.14469,-0.07251,0.20981
+204,mesa_std,nPhysFac,nutrition,site,ACME,0.00071,-0.0044,0.0059
+205,mesa_std,nPhysFac,nutrition,site,ADE,0.0152,-0.10078,0.11637
+206,mesa_std,nPhysFac,nutrition,site,Total Effect,0.00333,-0.1111,0.10424
+207,mesa_std,nPhysFac,nutrition,site,Prop. Mediated,0.21479,-0.20628,0.18298
+208,mesa_std,nPhysFac,PhysAct,site,ACME,0.00095,-0.00755,0.00868
+209,mesa_std,nPhysFac,PhysAct,site,ADE,0.01254,-0.10183,0.10978
+210,mesa_std,nPhysFac,PhysAct,site,Total Effect,0.00714,-0.10762,0.10464
+211,mesa_std,nPhysFac,PhysAct,site,Prop. Mediated,0.13234,-0.02022,0.18933
+212,mesa_std,nPhysFac,currentSmoker,site,ACME,-0.00013,-0.00207,0.00203
+213,mesa_std,nPhysFac,currentSmoker,site,ADE,0.0084,-0.10828,0.10573
+214,mesa_std,nPhysFac,currentSmoker,site,Total Effect,0.00619,-0.10806,0.10146
+215,mesa_std,nPhysFac,currentSmoker,site,Prop. Mediated,-0.02111,-0.04989,0.00572
+216,mesa_std,nPhysFac,alc,site,ACME,0.00036,-0.00373,0.00367
+217,mesa_std,nPhysFac,alc,site,ADE,0.01027,-0.10291,0.10413
+218,mesa_std,nPhysFac,alc,site,Total Effect,0.0089,-0.1048,0.10236
+219,mesa_std,nPhysFac,alc,site,Prop. Mediated,0.04068,0.00063,0.06464
+220,mesa_std,nRS,FamIncome,site,ACME,-0.00265,-0.01267,0.00702
+221,mesa_std,nRS,FamIncome,site,ADE,0.02656,-0.07492,0.12198
+222,mesa_std,nRS,FamIncome,site,Total Effect,0.03388,-0.06377,0.12757
+223,mesa_std,nRS,FamIncome,site,Prop. Mediated,-0.0781,-0.25216,0.06261
+224,mesa_std,nRS,nutrition,site,ACME,-0.00033,-0.00212,0.00065
+225,mesa_std,nRS,nutrition,site,ADE,0.03308,-0.05977,0.13193
+226,mesa_std,nRS,nutrition,site,Total Effect,0.03708,-0.0533,0.13329
+227,mesa_std,nRS,nutrition,site,Prop. Mediated,-0.00898,-0.02885,0.00661
+228,mesa_std,nRS,PhysAct,site,ACME,-0.00055,-0.00324,0.00141
+229,mesa_std,nRS,PhysAct,site,ADE,0.03279,-0.07147,0.13068
+230,mesa_std,nRS,PhysAct,site,Total Effect,0.0346,-0.06901,0.13161
+231,mesa_std,nRS,PhysAct,site,Prop. Mediated,-0.0158,-0.04393,0.00767
+232,mesa_std,nRS,currentSmoker,site,ACME,0.00143,-0.00511,0.00711
+233,mesa_std,nRS,currentSmoker,site,ADE,0.02488,-0.08124,0.12056
+234,mesa_std,nRS,currentSmoker,site,Total Effect,0.03525,-0.06785,0.12903
+235,mesa_std,nRS,currentSmoker,site,Prop. Mediated,0.04055,-0.15331,0.1959
+236,mesa_std,nRS,alc,site,ACME,-0.00111,-0.00456,0.00222
+237,mesa_std,nRS,alc,site,ADE,0.03472,-0.06585,0.13176
+238,mesa_std,nRS,alc,site,Total Effect,0.03578,-0.0634,0.1319
+239,mesa_std,nRS,alc,site,Prop. Mediated,-0.03115,-0.05442,-0.00626
+240,mesa_std,nSES,FamIncome,,ACME,-0.01759,-0.05731,0.0196
+241,mesa_std,nSES,FamIncome,,ADE,0.05538,-0.06218,0.17631
+242,mesa_std,nSES,FamIncome,,Total Effect,0.07586,-0.03169,0.19146
+243,mesa_std,nSES,FamIncome,,Prop. Mediated,-0.23192,-0.89587,0.87036
+244,mesa_std,nSES,nutrition,,ACME,-0.00342,-0.00887,0.00157
+245,mesa_std,nSES,nutrition,,ADE,0.07327,-0.03396,0.17986
+246,mesa_std,nSES,nutrition,,Total Effect,0.08154,-0.0245,0.18856
+247,mesa_std,nSES,nutrition,,Prop. Mediated,-0.04195,-0.09971,0.00269
+248,mesa_std,nSES,PhysAct,,ACME,-0.00904,-0.02347,0.00515
+249,mesa_std,nSES,PhysAct,,ADE,0.06946,-0.04176,0.18033
+250,mesa_std,nSES,PhysAct,,Total Effect,0.07989,-0.03087,0.1906
+251,mesa_std,nSES,PhysAct,,Prop. Mediated,-0.1132,-0.20902,0.05279
+252,mesa_std,nSES,currentSmoker,,ACME,0.0029,-0.00121,0.00786
+253,mesa_std,nSES,currentSmoker,,ADE,0.07261,-0.03328,0.18183
+254,mesa_std,nSES,currentSmoker,,Total Effect,0.07713,-0.03079,0.18823
+255,mesa_std,nSES,currentSmoker,,Prop. Mediated,0.03762,0.0094,0.0618
+256,mesa_std,nSES,alc,,ACME,-0.00572,-0.0148,0.0028
+257,mesa_std,nSES,alc,,ADE,0.0741,-0.03774,0.18739
+258,mesa_std,nSES,alc,,Total Effect,0.07628,-0.03421,0.19154
+259,mesa_std,nSES,alc,,Prop. Mediated,-0.07501,-0.13024,-0.00494
+260,mesa_std,nFavFood,FamIncome,,ACME,0.00139,-0.00587,0.00942
+261,mesa_std,nFavFood,FamIncome,,ADE,-0.02215,-0.14725,0.08572
+262,mesa_std,nFavFood,FamIncome,,Total Effect,-0.01265,-0.13322,0.09099
+263,mesa_std,nFavFood,FamIncome,,Prop. Mediated,-0.10961,-0.2435,0.14866
+264,mesa_std,nFavFood,nutrition,,ACME,5e-05,-0.0044,0.00423
+265,mesa_std,nFavFood,nutrition,,ADE,0.0014,-0.11402,0.10895
+266,mesa_std,nFavFood,nutrition,,Total Effect,-0.0078,-0.12672,0.10039
+267,mesa_std,nFavFood,nutrition,,Prop. Mediated,-0.00658,-0.03438,0.13168
+268,mesa_std,nFavFood,PhysAct,,ACME,-0.00018,-0.0042,0.0038
+269,mesa_std,nFavFood,PhysAct,,ADE,-0.00585,-0.12212,0.1107
+270,mesa_std,nFavFood,PhysAct,,Total Effect,-0.00757,-0.12389,0.10926
+271,mesa_std,nFavFood,PhysAct,,Prop. Mediated,0.02373,0.00117,0.06225
+272,mesa_std,nFavFood,currentSmoker,,ACME,8e-05,-0.00119,0.00163
+273,mesa_std,nFavFood,currentSmoker,,ADE,-0.01593,-0.13869,0.08973
+274,mesa_std,nFavFood,currentSmoker,,Total Effect,-0.01361,-0.13179,0.0899
+275,mesa_std,nFavFood,currentSmoker,,Prop. Mediated,-0.00584,-0.0249,0.01691
+276,mesa_std,nFavFood,alc,,ACME,7e-05,-0.00152,0.00151
+277,mesa_std,nFavFood,alc,,ADE,-0.00752,-0.11377,0.10614
+278,mesa_std,nFavFood,alc,,Total Effect,-0.00691,-0.11355,0.106
+279,mesa_std,nFavFood,alc,,Prop. Mediated,-0.01016,-0.02368,0.00375
+280,mesa_std,nPhysFac,FamIncome,,ACME,0.00187,-0.01048,0.01267
+281,mesa_std,nPhysFac,FamIncome,,ADE,0.01889,-0.10192,0.12268
+282,mesa_std,nPhysFac,FamIncome,,Total Effect,0.01275,-0.10726,0.11391
+283,mesa_std,nPhysFac,FamIncome,,Prop. Mediated,0.1466,-0.05256,0.26995
+284,mesa_std,nPhysFac,nutrition,,ACME,0.00108,-0.00411,0.00629
+285,mesa_std,nPhysFac,nutrition,,ADE,0.02271,-0.08358,0.12293
+286,mesa_std,nPhysFac,nutrition,,Total Effect,0.01091,-0.09897,0.10879
+287,mesa_std,nPhysFac,nutrition,,Prop. Mediated,0.09883,-0.10385,0.2028
+288,mesa_std,nPhysFac,PhysAct,,ACME,0.00126,-0.0081,0.00898
+289,mesa_std,nPhysFac,PhysAct,,ADE,0.01654,-0.10676,0.11425
+290,mesa_std,nPhysFac,PhysAct,,Total Effect,0.01098,-0.1156,0.10957
+291,mesa_std,nPhysFac,PhysAct,,Prop. Mediated,0.11431,-0.0414,0.24668
+292,mesa_std,nPhysFac,currentSmoker,,ACME,-0.00019,-0.00224,0.00196
+293,mesa_std,nPhysFac,currentSmoker,,ADE,0.01241,-0.11117,0.10888
+294,mesa_std,nPhysFac,currentSmoker,,Total Effect,0.01074,-0.11234,0.10586
+295,mesa_std,nPhysFac,currentSmoker,,Prop. Mediated,-0.01806,-0.03633,0.00464
+296,mesa_std,nPhysFac,alc,,ACME,0.00056,-0.00368,0.00383
+297,mesa_std,nPhysFac,alc,,ADE,0.0159,-0.099,0.1087
+298,mesa_std,nPhysFac,alc,,Total Effect,0.01433,-0.10032,0.10706
+299,mesa_std,nPhysFac,alc,,Prop. Mediated,0.03918,0.00872,0.05811
+300,mesa_std,nRS,FamIncome,,ACME,-0.00228,-0.01198,0.0075
+301,mesa_std,nRS,FamIncome,,ADE,0.02295,-0.08234,0.11697
+302,mesa_std,nRS,FamIncome,,Total Effect,0.02973,-0.07175,0.12228
+303,mesa_std,nRS,FamIncome,,Prop. Mediated,-0.07667,-0.25951,0.05088
+304,mesa_std,nRS,nutrition,,ACME,-0.00029,-0.00193,0.00103
+305,mesa_std,nRS,nutrition,,ADE,0.02728,-0.07206,0.12881
+306,mesa_std,nRS,nutrition,,Total Effect,0.03087,-0.06694,0.13169
+307,mesa_std,nRS,nutrition,,Prop. Mediated,-0.00928,-0.03164,0.00765
+308,mesa_std,nRS,PhysAct,,ACME,-0.00045,-0.00284,0.00138
+309,mesa_std,nRS,PhysAct,,ADE,0.02752,-0.06352,0.1192
+310,mesa_std,nRS,PhysAct,,Total Effect,0.0293,-0.06151,0.12085
+311,mesa_std,nRS,PhysAct,,Prop. Mediated,-0.0154,-0.04569,0.00812
+312,mesa_std,nRS,currentSmoker,,ACME,0.001,-0.00509,0.00705
+313,mesa_std,nRS,currentSmoker,,ADE,0.0172,-0.08799,0.11604
+314,mesa_std,nRS,currentSmoker,,Total Effect,0.02738,-0.07282,0.12309
+315,mesa_std,nRS,currentSmoker,,Prop. Mediated,0.03666,-0.07827,0.2333
+316,mesa_std,nRS,alc,,ACME,-0.00086,-0.00393,0.0023
+317,mesa_std,nRS,alc,,ADE,0.02701,-0.07646,0.11241
+318,mesa_std,nRS,alc,,Total Effect,0.0282,-0.0781,0.11267
+319,mesa_std,nRS,alc,,Prop. Mediated,-0.03057,-0.05558,-0.00587

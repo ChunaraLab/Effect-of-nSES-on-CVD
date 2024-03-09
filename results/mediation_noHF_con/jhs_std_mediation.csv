@@ -1,0 +1,81 @@
+,Data,X,M,other,Effect,Estimate,95_CI_Lower,95_CI_Upper
+0,jhs_std,nSES,FamIncome,,ACME,-0.05807,-0.10939,-0.01583
+1,jhs_std,nSES,FamIncome,,ADE,0.21092,0.05635,0.38351
+2,jhs_std,nSES,FamIncome,,Total Effect,0.20658,0.05736,0.36495
+3,jhs_std,nSES,FamIncome,,Prop. Mediated,-0.28108,-0.38182,-0.19646
+4,jhs_std,nSES,nutrition,,ACME,-0.0004,-0.00481,0.00329
+5,jhs_std,nSES,nutrition,,ADE,0.2082,0.05513,0.36172
+6,jhs_std,nSES,nutrition,,Total Effect,0.20802,0.05515,0.36029
+7,jhs_std,nSES,nutrition,,Prop. Mediated,-0.00192,-0.01835,0.01387
+8,jhs_std,nSES,PhysAct,,ACME,-0.02332,-0.04137,-0.0074
+9,jhs_std,nSES,PhysAct,,ADE,0.19805,0.06146,0.34052
+10,jhs_std,nSES,PhysAct,,Total Effect,0.21365,0.07497,0.3652
+11,jhs_std,nSES,PhysAct,,Prop. Mediated,-0.10913,-0.13421,-0.08337
+12,jhs_std,nSES,currentSmoker,,ACME,0.00294,0.00041,0.00687
+13,jhs_std,nSES,currentSmoker,,ADE,0.19179,0.04212,0.35147
+14,jhs_std,nSES,currentSmoker,,Total Effect,0.20992,0.06115,0.36811
+15,jhs_std,nSES,currentSmoker,,Prop. Mediated,0.01399,0.00421,0.02253
+16,jhs_std,nSES,alc,,ACME,-0.0127,-0.0237,-0.00399
+17,jhs_std,nSES,alc,,ADE,0.21084,0.06464,0.38095
+18,jhs_std,nSES,alc,,Total Effect,0.20729,0.06161,0.37049
+19,jhs_std,nSES,alc,,Prop. Mediated,-0.06127,-0.08097,-0.04518
+20,jhs_std,nFavFood,FamIncome,,ACME,-0.00682,-0.02908,0.01499
+21,jhs_std,nFavFood,FamIncome,,ADE,0.04081,-0.08712,0.17527
+22,jhs_std,nFavFood,FamIncome,,Total Effect,0.04486,-0.08093,0.17671
+23,jhs_std,nFavFood,FamIncome,,Prop. Mediated,-0.15205,-0.37978,0.13785
+24,jhs_std,nFavFood,nutrition,,ACME,0.00054,-0.0014,0.00314
+25,jhs_std,nFavFood,nutrition,,ADE,0.04226,-0.08471,0.17423
+26,jhs_std,nFavFood,nutrition,,Total Effect,0.04232,-0.0844,0.17463
+27,jhs_std,nFavFood,nutrition,,Prop. Mediated,0.01287,-0.00459,0.0311
+28,jhs_std,nFavFood,PhysAct,,ACME,-0.00228,-0.01057,0.00617
+29,jhs_std,nFavFood,PhysAct,,ADE,0.03921,-0.11092,0.17137
+30,jhs_std,nFavFood,PhysAct,,Total Effect,0.04487,-0.10292,0.17536
+31,jhs_std,nFavFood,PhysAct,,Prop. Mediated,-0.05072,-0.12464,-0.00468
+32,jhs_std,nFavFood,currentSmoker,,ACME,0.00035,-0.00098,0.00207
+33,jhs_std,nFavFood,currentSmoker,,ADE,0.03846,-0.09503,0.16614
+34,jhs_std,nFavFood,currentSmoker,,Total Effect,0.04325,-0.0893,0.16872
+35,jhs_std,nFavFood,currentSmoker,,Prop. Mediated,0.00802,-0.00395,0.02345
+36,jhs_std,nFavFood,alc,,ACME,-0.00062,-0.00334,0.00138
+37,jhs_std,nFavFood,alc,,ADE,0.04352,-0.0917,0.16669
+38,jhs_std,nFavFood,alc,,Total Effect,0.04383,-0.09109,0.16667
+39,jhs_std,nFavFood,alc,,Prop. Mediated,-0.01409,-0.0324,0.002
+40,jhs_std,nPhysFac,FamIncome,,ACME,-0.00108,-0.01157,0.00967
+41,jhs_std,nPhysFac,FamIncome,,ADE,0.01461,-0.13055,0.14185
+42,jhs_std,nPhysFac,FamIncome,,Total Effect,0.01971,-0.12596,0.14752
+43,jhs_std,nPhysFac,FamIncome,,Prop. Mediated,-0.05458,-0.19037,0.02275
+44,jhs_std,nPhysFac,nutrition,,ACME,-0.0002,-0.00232,0.00197
+45,jhs_std,nPhysFac,nutrition,,ADE,0.0188,-0.12282,0.14798
+46,jhs_std,nPhysFac,nutrition,,Total Effect,0.01885,-0.12183,0.14752
+47,jhs_std,nPhysFac,nutrition,,Prop. Mediated,-0.01064,-0.02807,0.00708
+48,jhs_std,nPhysFac,PhysAct,,ACME,-0.00011,-0.00262,0.00235
+49,jhs_std,nPhysFac,PhysAct,,ADE,0.0138,-0.13142,0.15425
+50,jhs_std,nPhysFac,PhysAct,,Total Effect,0.01849,-0.12486,0.15623
+51,jhs_std,nPhysFac,PhysAct,,Prop. Mediated,-0.00603,-0.0437,0.02099
+52,jhs_std,nPhysFac,currentSmoker,,ACME,8e-05,-0.00141,0.00155
+53,jhs_std,nPhysFac,currentSmoker,,ADE,0.0097,-0.13518,0.14293
+54,jhs_std,nPhysFac,currentSmoker,,Total Effect,0.01374,-0.12953,0.14464
+55,jhs_std,nPhysFac,currentSmoker,,Prop. Mediated,0.00605,-0.00587,0.02673
+56,jhs_std,nPhysFac,alc,,ACME,0.00015,-0.00151,0.00211
+57,jhs_std,nPhysFac,alc,,ADE,0.02015,-0.13061,0.15088
+58,jhs_std,nPhysFac,alc,,Total Effect,0.01993,-0.13103,0.15136
+59,jhs_std,nPhysFac,alc,,Prop. Mediated,0.00778,-0.00942,0.02544
+60,jhs_std,nRS,FamIncome,,ACME,-0.01747,-0.04484,0.00796
+61,jhs_std,nRS,FamIncome,,ADE,0.09518,-0.04163,0.24115
+62,jhs_std,nRS,FamIncome,,Total Effect,0.09894,-0.03425,0.24477
+63,jhs_std,nRS,FamIncome,,Prop. Mediated,-0.17656,-0.29426,-0.09024
+64,jhs_std,nRS,nutrition,,ACME,0.00184,-0.00058,0.00618
+65,jhs_std,nRS,nutrition,,ADE,0.09692,-0.02775,0.24005
+66,jhs_std,nRS,nutrition,,Total Effect,0.09687,-0.02807,0.23987
+67,jhs_std,nRS,nutrition,,Prop. Mediated,0.01903,0.00201,0.03544
+68,jhs_std,nRS,PhysAct,,ACME,-0.00866,-0.02379,0.00489
+69,jhs_std,nRS,PhysAct,,ADE,0.08832,-0.04974,0.24223
+70,jhs_std,nRS,PhysAct,,Total Effect,0.0974,-0.04211,0.24795
+71,jhs_std,nRS,PhysAct,,Prop. Mediated,-0.08887,-0.17739,0.00179
+72,jhs_std,nRS,currentSmoker,,ACME,0.00124,-0.00075,0.00425
+73,jhs_std,nRS,currentSmoker,,ADE,0.08698,-0.06087,0.23399
+74,jhs_std,nRS,currentSmoker,,Total Effect,0.10152,-0.04799,0.24464
+75,jhs_std,nRS,currentSmoker,,Prop. Mediated,0.01219,-0.00162,0.02951
+76,jhs_std,nRS,alc,,ACME,-0.00429,-0.01214,0.00227
+77,jhs_std,nRS,alc,,ADE,0.09762,-0.04911,0.25638
+78,jhs_std,nRS,alc,,Total Effect,0.09762,-0.04914,0.2562
+79,jhs_std,nRS,alc,,Prop. Mediated,-0.04393,-0.0641,-0.02693
