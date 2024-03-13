@@ -1,0 +1,9 @@
+,Data,X,other,mean_coef,ci_lower,ci_upper
+0,mesa_bla_std,nSES,site,0.18442,-0.11964,0.56445
+1,mesa_bla_std,nFavFood,site,0.05412,-0.16238,0.24501
+2,mesa_bla_std,nPhysFac,site,0.20044,-0.13806,0.46267
+3,mesa_bla_std,nRS,site,0.13214,0.00609,0.25285
+4,mesa_bla_std,nSES,,0.18393,-0.14011,0.55501
+5,mesa_bla_std,nFavFood,,0.04936,-0.16475,0.22429
+6,mesa_bla_std,nPhysFac,,0.20248,-0.11691,0.46146
+7,mesa_bla_std,nRS,,0.13218,-0.00183,0.25754

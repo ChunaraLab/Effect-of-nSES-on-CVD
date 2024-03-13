@@ -1,0 +1,5 @@
+,Data,X,other,mean_coef,ci_lower,ci_upper
+0,jhs_std,nSES,,0.34805,0.20845,0.50364
+1,jhs_std,nFavFood,,0.17059,0.04099,0.28811
+2,jhs_std,nPhysFac,,0.00277,-0.12531,0.10626
+3,jhs_std,nRS,,0.33309,0.20499,0.46674
