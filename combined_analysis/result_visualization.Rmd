@@ -5,7 +5,7 @@ date: "2023-09-19"
 output: pdf_document
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(ggplot2)
 library(tidyverse)
@@ -17,31 +17,38 @@ library(dplyr)
 
 ### data
 
+no HF
 ```{r}
-setwd("../results/mediation_Mar5")
+setwd("../results/mediation_noHF_con")
 
-# List all CSV files in the directory
-files <- list.files(pattern = "\\.csv$")
+mod_files <- list.files(pattern = "\\.csv$")
 
-# Function to read each file and add a column with the file name
-read_csv_add_filename <- function(file) {
+read_csv <- function(file) {
   data <- read.csv(file, stringsAsFactors = FALSE)
-  data$SourceFile <- file # Add a new column with the file name
   return(data)
 }
 
-# Read each CSV file, add file name, and combine them into one data frame
-mediation <- do.call(rbind, lapply(files, read_csv_add_filename)) %>%
-  separate(col = SourceFile, into = c("dat1", "dat2","nb_exposure", "ind_mediator","med"), sep = "_") %>%
-  select(-c(1,7,8,11)) %>%
-  filter(Effect != "Prop. Mediated")
+# Read each CSV file, and combine them into one data frame
+noHF_mediation <- do.call(rbind, lapply(mod_files, read_csv)) 
+```
 
-mediation$Effect <- factor(mediation$Effect, levels =unique(mediation$Effect))
+HF
+```{r}
+setwd("../results/mediation_HF_con")
 
+mod_files <- list.files(pattern = "\\.csv$")
+
+read_csv <- function(file) {
+  data <- read.csv(file, stringsAsFactors = FALSE)
+  return(data)
+}
+
+# Read each CSV file, and combine them into one data frame
+HF_mediation <- do.call(rbind, lapply(mod_files, read_csv)) 
 ```
 
 
-### plotting
+### single plot
 ```{r}
 plt_dat <- mediation[(mediation$nb_exposure == "nRS")&(mediation$Data == "jhs_std"), ]
 
@@ -64,12 +71,130 @@ ggsave("nRS_jhs_std.png", plot = plot, path = "../results/mediation_plots_Mar5",
 ```
 
 
+### mesa
+
+```{r}
+mesa_hf <- HF_mediation[(HF_mediation$Data == "mesa_std")&(HF_mediation$Effect!= "Prop. Mediated"), ]   
+mesa_nohf <- noHF_mediation[(noHF_mediation$Data == "mesa_std")&(HF_mediation$Effect!= "Prop. Mediated"), ]
+```
+
+```{r}
+mesa_mediation_plots <- function(data, x_name, other_name, data_frame_name) {
+  
+  # Generate all combinations of 'X' and 'other'
+  combinations <- unique(data %>% select(!!sym(x_name), !!sym(other_name)))
+  
+  # Iterate through each combination
+  for (i in 1:nrow(combinations)) {
+    # Subset the data for the current combination
+    plt_dat <- data %>% 
+      filter(!!sym(x_name) == combinations[i, x_name],
+             !!sym(other_name) == combinations[i, other_name])
+    
+    # Create the plot
+    plot <- ggplot(plt_dat, aes(x = Estimate, y = M, color = Effect)) +
+      geom_point(position = position_dodge(width = 0.5), size = 3.5) +
+      geom_errorbarh(aes(xmin = X95_CI_Lower, xmax = X95_CI_Upper),
+                     height = 0.2, position = position_dodge(width = 0.5), size = 2) +
+      labs(x = "Effect", y = "Individual potential mediator") +
+      geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
+      theme_minimal() +
+      ggtitle(paste(combinations[i, x_name],"as exposure using", combinations[i, other_name],data_frame_name, "data")) +
+      theme(axis.text = element_text(size = 15),
+            axis.title = element_text(size = 15),
+            legend.text = element_text(size = 15),
+            legend.title = element_text(size = 15),
+            plot.title = element_text(size = 20))
+    
+    # Save the plot
+    ggsave(paste("../results/plots_conNB_moderation_mediation/mediation/", data_frame_name, "_",
+                 combinations[i, x_name], "_", combinations[i, other_name], ".png",
+                 sep = ""),
+           plot = plot, width = 10, height = 8, dpi = 300)
+  }
+}
+
+```
+
+
+```{r}
+mesa_mediation_plots(mesa_hf, "X", "other", "mesa_hf")
+mesa_mediation_plots(mesa_nohf, "X", "other", "mesa_nohf")
+
+```
+
+
+### mesa_bla
+
+```{r}
+mesa_bla_hf <- HF_mediation[(HF_mediation$Data == "mesa_bla_std")&(HF_mediation$Effect!= "Prop. Mediated"), ]
+mesa_bla_nohf <- noHF_mediation[(noHF_mediation$Data == "mesa_bla_std")&(HF_mediation$Effect!= "Prop. Mediated"), ]
+```
+
+```{r}
+mesa_mediation_plots(mesa_bla_hf, "X", "other", "mesa_bla_hf")
+mesa_mediation_plots(mesa_bla_nohf, "X", "other", "mesa_bla_nohf")
+
+```
+
+### jhs
+
+```{r}
+jhs_hf <- HF_mediation[(HF_mediation$Data == "jhs_std")&(HF_mediation$Effect!= "Prop. Mediated"), ]   
+jhs_nohf <- noHF_mediation[(noHF_mediation$Data == "jhs_std")&(HF_mediation$Effect!= "Prop. Mediated"), ]
+```
+
+```{r}
+jhs_mediation_plots <- function(data, x_name, data_frame_name) {
+  
+  # Extract unique levels of the moderator variable
+  levels_of_x <- unique(data[[x_name]])
+  
+  # Loop through each level
+  for (level in levels_of_x) {
+    # Subset the data for the current level of X
+    plt_dat <- data %>% filter(!!sym(x_name) == level)
+    
+    # Create the plot
+    plot <- ggplot(plt_dat, aes(x = Estimate, y = M, color = Effect)) +
+      geom_point(position = position_dodge(width = 0.5), size = 3.5) +
+      geom_errorbarh(aes(xmin = X95_CI_Lower, xmax = X95_CI_Upper),
+                     height = 0.2, position = position_dodge(width = 0.5), size = 2) +
+      labs(x = "Effect", y = "Individual potential mediator") +
+      geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
+      theme_minimal() +
+      ggtitle(paste("Mediation of individual features on", level,"in",data_frame_name)) +
+      theme(axis.text = element_text(size = 15),
+            axis.title = element_text(size = 15),
+            legend.text = element_text(size = 15),
+            legend.title = element_text(size = 15),
+            plot.title = element_text(size = 20))
+    
+    # Save the plot
+    ggsave(paste("../results/plots_conNB_moderation_mediation/mediation/", data_frame_name, "_",
+                 level, ".png",
+                 sep = ""),
+           plot = plot, width = 10, height = 8, dpi = 300)
+  }
+}
+
+```
+
+
+```{r}
+jhs_mediation_plots(jhs_hf, "X", "jhs_hf")
+jhs_mediation_plots(jhs_nohf, "X", "jhs_nohf")
+
+```
+
+
 ## Moderation
 
 ### data
 
+no HF
 ```{r}
-setwd("../results/moderation_Mar5")
+setwd("../results/moderation_noHF_con")
 
 mod_files <- list.files(pattern = "\\.csv$")
 
@@ -79,35 +204,130 @@ read_csv <- function(file) {
 }
 
 # Read each CSV file, and combine them into one data frame
-moderation <- do.call(rbind, lapply(mod_files, read_csv)) %>%
-  separate(col = Bootstrap.Result.Name, sep = "_", 
-           into = c("bootstrap", "number", "nb_exposure", "ind_moderator")) %>%
-  select(-c(1,3,4)) 
+noHF_moderation <- do.call(rbind, lapply(mod_files, read_csv)) 
 ```
 
-
-#### plotting
+HF
 ```{r}
-plt_dat <- moderation[(moderation$nb_exposure == "nRS"), ]
+setwd("../results/moderation_HF_con")
 
-plot <- ggplot(plt_dat, aes(x = Mean, y = ind_moderator, color = Data)) +
-            geom_point(position = position_dodge(width = 0.5), size=3.5) +  
-            geom_errorbarh(aes(xmin = X2.5., xmax = X97.5.), 
-                           height = 0.2, position = position_dodge(width = 0.5), size =2) +
-            labs(x = "Estimated Coefficient of Interaction Term",
-                 y = "Individual potential moderator") +
-            geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
-            theme_minimal() +
-            ggtitle("Moderation of individual features on nRS") +
-            theme(axis.text = element_text(size = 15),
-                  axis.title = element_text(size = 15),
-                  legend.text = element_text(size = 15),
-                  legend.title = element_text(size = 15),
-                  plot.title = element_text(size = 20))
+mod_files <- list.files(pattern = "\\.csv$")
 
+read_csv <- function(file) {
+  data <- read.csv(file, stringsAsFactors = FALSE)
+  return(data)
+}
 
-ggsave("moderation_nRS.png", plot = plot, path = "../results/moderation_plots_Mar5", width = 10, height = 8, dpi = 300)
+# Read each CSV file, and combine them into one data frame
+HF_moderation <- do.call(rbind, lapply(mod_files, read_csv)) 
 ```
+### mesa
+
+color group by "other" setting
+```{r}
+mesa_hf <- HF_moderation[(HF_moderation$Data == "mesa_std"), ]
+mesa_nohf <- noHF_moderation[(noHF_moderation$Data == "mesa_std"), ]
+```
+
+```{r}
+mesa_moderation_plots <- function(data, col_x_name, data_frame_name) {
+  # Extract unique levels of the moderator variable
+  levels_of_x <- unique(data[[col_x_name]])
+  
+  # Loop through each level
+  for (level in levels_of_x) {
+    # Subset the data for the current level of X
+    plt_dat <- data %>% filter(!!sym(col_x_name) == level)
+    
+    # Check the number of levels in 'other'
+    num_levels_other <- length(unique(plt_dat$other))
+    
+    # Create the plot
+    plot <- ggplot(plt_dat, aes(x = mean_coef, y = moderator, color = other)) +
+      geom_point(position = position_dodge(width = 0.5), size = 3.5) +
+      geom_errorbarh(aes(xmin = ci_lower, xmax = ci_upper), 
+                     height = 0.2, position = position_dodge(width = 0.5), size = 2) +
+      labs(x = "Estimated Coefficient of Interaction Term",
+           y = "Individual potential moderator") +
+      geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
+      theme_minimal() +
+      ggtitle(paste("Moderation of individual features on", level,"in",data_frame_name)) +
+      theme(axis.text = element_text(size = 15),
+            axis.title = element_text(size = 15),
+            legend.text = element_text(size = 15),
+            legend.title = element_text(size = 15),
+            plot.title = element_text(size = 20))
+    
+    # Save the plot
+    ggsave(paste0(data_frame_name, "_", level, "_moderation.png"), plot = plot,
+           path = "../results/plots_conNB_moderation_mediation/moderation",
+           width = 10, height = 8, dpi = 300)
+  }
+}
+
+```
+
+```{r}
+mesa_moderation_plots(mesa_hf, "X", "mesa_hf")
+mesa_moderation_plots(mesa_nohf, "X", "mesa_nohf")
+```
+
+### mesa_bla
+
+color group by "other" setting
+```{r}
+mesa_bla_hf <- HF_moderation[(HF_moderation$Data == "mesa_bla_std"), ]
+mesa_bla_nohf <- noHF_moderation[(noHF_moderation$Data == "mesa_bla_std"), ]
+mesa_moderation_plots(mesa_bla_hf, "X", "mesa_bla_hf")
+mesa_moderation_plots(mesa_bla_nohf, "X", "mesa_bla_nohf")
+```
+
+### jhs
+
+```{r}
+jhs_moderation_plots <- function(data, col_x_name, data_frame_name) {
+  
+  # Extract unique levels of the moderator variable
+  levels_of_x <- unique(data[[col_x_name]])
+  
+  # Loop through each level
+  for (level in levels_of_x) {
+    # Subset the data for the current level of X
+    plt_dat <- data %>% filter(!!sym(col_x_name) == level)
+    
+    # Create the plot
+    plot <- ggplot(plt_dat, aes(x = mean_coef, y = moderator)) +
+      geom_point(position = position_dodge(width = 0.5), size = 3.5) +
+      geom_errorbarh(aes(xmin = ci_lower, xmax = ci_upper), 
+                     height = 0.2, position = position_dodge(width = 0.5), size = 2) +
+      labs(x = "Estimated Coefficient of Interaction Term",
+           y = "Individual potential moderator") +
+      geom_vline(xintercept = 0, linetype = "dashed", color = "black") +
+      theme_minimal() +
+      ggtitle(paste("Moderation of individual features on", level,"in",data_frame_name)) +
+      theme(axis.text = element_text(size = 15),
+            axis.title = element_text(size = 15),
+            legend.text = element_text(size = 15),
+            legend.title = element_text(size = 15),
+            plot.title = element_text(size = 20))
+    
+    # Save the plot
+    ggsave(paste0(data_frame_name, "_", level, "_moderation.png"), plot = plot,
+           path = "../results/plots_conNB_moderation_mediation/moderation",
+           width = 10, height = 8, dpi = 300)
+  }
+}
+
+```
+
+```{r}
+jhs_hf <- HF_moderation[(HF_moderation$Data == "jhs_std"), ]
+jhs_nohf <- noHF_moderation[(noHF_moderation$Data == "jhs_std"), ]
+jhs_moderation_plots(jhs_hf, "X", "jhs_hf")
+jhs_moderation_plots(jhs_nohf, "X", "jhs_nohf")
+```
+
+
 
 
 ## Missingness
