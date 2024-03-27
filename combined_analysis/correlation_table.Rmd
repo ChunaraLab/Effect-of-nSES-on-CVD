@@ -1,0 +1,136 @@
+---
+title: "Univariate correlation table"
+author: "Xiaoting Chen"
+date: "2024-03-26"
+output: pdf_document
+---
+
+```{r setup, include=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Prep
+
+```{r}
+library(tidyr)
+library(ggplot2)
+library(dplyr)
+library(broom)
+```
+
+```{r}
+jhs_std <- read.csv("/Users/cxt/Documents/research/CVD/Effect-of-nSES-on-CVD/data_processed/JHS/jhs_std.csv") %>%
+  na.omit()
+
+mesa_std <- read.csv("/Users/cxt/Documents/research/CVD/Effect-of-nSES-on-CVD/data_processed/MESA/mesa_std.csv") %>%
+  na.omit()
+```
+
+```{r}
+mesa_hf <- mesa_std[,-c(1,3,4)]
+mesa_nohf <- mesa_std[,-c(1,2,4)]
+
+jhs_hf <- jhs_std[,-c(1,3,14)]
+jhs_nohf <- jhs_std[,-c(1,2,14)]
+```
+
+
+## analysis
+
+### positive outcome counts
+```{r}
+sum(mesa_std$cvd_10y_HF)
+sum(mesa_std$cvd_10y_noHF)
+sum(jhs_std$cvd_10y_HF)
+sum(jhs_std$cvd_10y_noHF)
+```
+
+### descriptive stats by outcome
+
+```{r}
+mesa_con_variable <- c( "nSES","nFavFood","nPhysFac","nRS",
+                        "age","hdl", "totchol", "sbp")
+mesa_cate_variable <- c( "site","race",
+                         "FamIncome","nutrition","PhysAct",
+                         "gender","currentSmoker", "alc","Diabetes"  )
+
+jhs_con_variable <- c( "nSES","nFavFood","nPhysFac","nRS",
+                        "age","hdl", "totchol", "sbp")
+jhs_cate_variable <- c( "FamIncome","nutrition","PhysAct",
+                         "gender","currentSmoker", "alc","Diabetes"  )
+```
+
+
+continuous features
+```{r}
+summary_stats_results <- data.frame()
+
+for (var in mesa_con_variable) {
+  # Compute summary statistics for the current variable
+  summary_stats <- mesa_nohf %>%
+    group_by(cvd_10y_noHF) %>%
+    summarise(
+      Mean = round(mean(get(var)), digits = 3),
+      SD = round(sd(get(var)), digits = 3)
+    ) %>%
+    mutate(Variable = var)  # Ensuring variable name is correctly reflected
+  
+  # Bind the current summary statistics to the results data frame
+  summary_stats_results <- rbind(summary_stats_results, summary_stats)
+}
+
+# Print the results
+print(summary_stats_results)
+```
+
+categorical features
+```{r}
+all_summary_stats <- list()
+
+for (var in mesa_cate_variable) {
+  # Compute summary statistics for the current variable
+  summary_stats <- mesa_hf %>%
+    group_by(cvd_10y_HF, .data[[var]]) %>%
+    summarise(Count = n(), .groups = 'drop') %>%
+    mutate(Percentage = (Count / sum(Count)) * 100)
+  
+  # Store the results in a list
+  all_summary_stats[[var]] <- summary_stats
+}
+
+# If you want to view the results for a specific variable
+print(all_summary_stats) 
+```
+
+
+### logistic regression
+```{r}
+dat <- jhs_hf
+
+# Extract the names of the predictors
+predictors <- names(jhs_hf)[-1]  # Assuming the first column is the outcome
+
+# Initialize an empty data frame to store the results
+results <- data.frame(Predictor = character(), Coefficient = numeric(), P_value = numeric(), stringsAsFactors = FALSE)
+
+# Loop through each predictor and perform logistic regression
+for (pred in predictors) {
+  
+  formula_text <- paste("cvd_10y_HF ~", pred)
+  model <- glm(formula_text, data = dat, family = binomial())
+  
+  # Extract the coefficient and p-value for the predictor (not the intercept)
+  tidy_model <- tidy(model)
+  coef_info <- tidy_model %>% filter(term == pred)
+  
+  # Append the results to the 'results' data frame
+  results <- rbind(results, c(pred, coef_info$estimate, coef_info$p.value))
+}
+
+# Rename the columns for clarity
+names(results) <- c("Predictor", "Coefficient", "P_value")
+
+# View the results
+print(results)
+
+```
