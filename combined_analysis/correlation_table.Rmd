@@ -34,6 +34,11 @@ jhs_hf <- jhs_std[,-c(1,3,14)]
 jhs_nohf <- jhs_std[,-c(1,2,14)]
 ```
 
+```{r}
+save_path <- "/Users/cxt/Documents/research/CVD/Effect-of-nSES-on-CVD/results/univariate_table"
+
+```
+
 
 ## analysis
 
@@ -65,10 +70,10 @@ continuous features
 ```{r}
 summary_stats_results <- data.frame()
 
-for (var in mesa_con_variable) {
+for (var in jhs_con_variable) {
   # Compute summary statistics for the current variable
-  summary_stats <- mesa_nohf %>%
-    group_by(cvd_10y_noHF) %>%
+  summary_stats <- jhs_hf %>%
+    group_by(cvd_10y_HF) %>%
     summarise(
       Mean = round(mean(get(var)), digits = 3),
       SD = round(sd(get(var)), digits = 3)
@@ -81,34 +86,44 @@ for (var in mesa_con_variable) {
 
 # Print the results
 print(summary_stats_results)
+write.csv(summary_stats_results, file.path(save_path,"jhs_hf_ConVar.csv"), row.names = FALSE)
 ```
 
 categorical features
 ```{r}
-all_summary_stats <- list()
+cate_all_summary_stats <- list()
 
-for (var in mesa_cate_variable) {
+for (var in jhs_cate_variable) {
   # Compute summary statistics for the current variable
-  summary_stats <- mesa_hf %>%
+  summary_stats <- jhs_hf %>%
     group_by(cvd_10y_HF, .data[[var]]) %>%
     summarise(Count = n(), .groups = 'drop') %>%
     mutate(Percentage = (Count / sum(Count)) * 100)
   
   # Store the results in a list
-  all_summary_stats[[var]] <- summary_stats
+  cate_all_summary_stats[[var]] <- summary_stats
 }
 
 # If you want to view the results for a specific variable
-print(all_summary_stats) 
+print(cate_all_summary_stats) 
+```
+
+```{r}
+
+for (name in names(cate_all_summary_stats)) {
+  file_name <- paste0("jhs","hf", name, ".csv")
+  full_path <- file.path(save_path, file_name)
+  readr::write_csv(cate_all_summary_stats[[name]], full_path)
+}
 ```
 
 
 ### logistic regression
 ```{r}
-dat <- jhs_hf
+dat <- mesa_hf
 
 # Extract the names of the predictors
-predictors <- names(jhs_hf)[-1]  # Assuming the first column is the outcome
+predictors <- names(mesa_hf)[-1]  # exclude outcome column
 
 # Initialize an empty data frame to store the results
 results <- data.frame(Predictor = character(), Coefficient = numeric(), P_value = numeric(), stringsAsFactors = FALSE)
