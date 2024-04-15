@@ -15,7 +15,7 @@ library(ggplot2)
 library(dplyr)
 ```
 
-## JHS event
+## event data
 
 ```{r}
 mesa_event <- read.csv("/Users/cxt/Documents/research/CVD/Effect-of-nSES-on-CVD/Data/MESA/outcomes/event.csv") 
@@ -36,6 +36,7 @@ mesa_event <- mesa_event %>%
   )) %>%
   mutate(cvd_event_HF_t = case_when(
     cvd_event_HF == 1 ~ pmin(mitt, strktt, chdhtt, chdatt, chftt, na.rm = TRUE),
+    cvd_event_HF == 0 ~ pmax(mitt, strktt, chdhtt, chdatt, chftt, na.rm = TRUE),
     TRUE ~ NA_real_  # Assign NA for cases where cvd_event_HF != 1
   )) %>%
   filter(!is.na(cvd_event_HF)) %>%
@@ -62,6 +63,7 @@ mesa_event <- mesa_event %>%
   )) %>%
   mutate(cvd_event_noHF_t = case_when(
     cvd_event_noHF == 1 ~ pmin(mitt, strktt, chdhtt, chdatt, na.rm = TRUE),
+    cvd_event_noHF == 0 ~ pmax(mitt, strktt, chdhtt, chdatt, na.rm = TRUE),
     TRUE ~ NA_real_  # Assign NA for cases where cvd_event_noHF != 1
   )) %>%
   filter(!is.na(cvd_event_noHF)) %>%
