@@ -45,6 +45,7 @@ event_dat <- inner_join(incevtchd, incevtstroke, by = "subjid") %>%
   )) %>%
   mutate(cvd_event_HF_t = case_when(
     cvd_event_HF == 1 ~ pmin(years_chd, hardyears, years_stroke, years_hf, na.rm = TRUE),
+    cvd_event_HF == 0 ~ pmin(years_chd, hardyears, years_stroke, years_hf, na.rm = TRUE),
     TRUE ~ NA_real_  # Assign NA for cases where cvd_event_HF != 1
   )) %>%
   filter(!is.na(cvd_event_HF)) %>%
@@ -70,6 +71,7 @@ event_dat <- event_dat %>%
   )) %>%
   mutate(cvd_event_noHF_t = case_when(
     cvd_event_noHF == 1 ~ pmin(years_chd, hardyears, years_stroke, na.rm = TRUE),
+    cvd_event_noHF == 0 ~ pmin(years_chd, hardyears, years_stroke, na.rm = TRUE),
     TRUE ~ NA_real_  # Assign NA for cases where cvd_event != 1
   )) %>%
   filter(!is.na(cvd_event_noHF)) %>%
