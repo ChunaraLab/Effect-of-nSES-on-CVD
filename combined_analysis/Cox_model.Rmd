@@ -1,0 +1,65 @@
+---
+title: "Cox model"
+author: "Xiaoting Chen"
+date: "2024-04-15"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(survival)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+```
+
+## Data
+
+mesa
+```{r}
+mesa_x <- read.csv("../data_processed/MESA/mesa_std.csv")
+mesa_y <- read.csv("../data_processed/MESA/mesa_event.csv") %>%
+  select(idno, cvd_event_HF, cvd_event_HF_t,
+          cvd_event_noHF, cvd_event_noHF_t)
+
+mesa_dat <- merge(mesa_x, mesa_y, by = "idno")
+mesa_bla <- mesa_dat[mesa_dat$race == 1,]
+```
+
+jhs
+```{r}
+jhs_x <- read.csv("../data_processed/JHS/jhs_std.csv")
+jhs_y <- read.csv("../data_processed/JHS/jhs_event.csv") %>%
+  select(subjid, cvd_event_HF, cvd_event_HF_t,
+          cvd_event_noHF, cvd_event_noHF_t)
+
+jhs_dat <- merge(jhs_x, jhs_y, by = "subjid")
+```
+
+check event time distribution
+```{r}
+hist(mesa_y[mesa_y$cvd_event_HF == 1,"cvd_event_HF_t"])
+```
+
+## Model
+
+```{r pressure, echo=FALSE}
+surv_formula <- Surv(cvd_event_HF_t, cvd_event_HF) ~ nSES+nRS+nFavFood+nPhysFac +
+  site +
+  FamIncome + nutrition + PhysAct + currentSmoker + alc +
+  age + gender + Diabetes + hdl + totchol + sbp
+  
+cox_model <- coxph(surv_formula, data = mesa_bla)
+summary(cox_model)
+```
+```{r pressure, echo=FALSE}
+surv_formula <- Surv(cvd_event_noHF_t, cvd_event_noHF) ~ nSES+nRS+nFavFood+nPhysFac +
+  FamIncome + nutrition + PhysAct + currentSmoker + alc +
+  age + gender + Diabetes + hdl + totchol + sbp
+  
+cox_model <- coxph(surv_formula, data = jhs_dat)
+summary(cox_model)
+```
