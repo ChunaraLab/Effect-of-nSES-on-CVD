@@ -25,7 +25,7 @@ mesa_y <- read.csv("../data_processed/MESA/mesa_event.csv") %>%
   select(idno, cvd_event_HF, cvd_event_HF_t,
           cvd_event_noHF, cvd_event_noHF_t)
 
-mesa_dat <- merge(mesa_x, mesa_y, by = "idno")
+mesa_dat <- merge(mesa_x, mesa_y, by = "idno") %>% na.omit()
 mesa_bla <- mesa_dat[mesa_dat$race == 1,]
 ```
 
@@ -36,7 +36,7 @@ jhs_y <- read.csv("../data_processed/JHS/jhs_event.csv") %>%
   select(subjid, cvd_event_HF, cvd_event_HF_t,
           cvd_event_noHF, cvd_event_noHF_t)
 
-jhs_dat <- merge(jhs_x, jhs_y, by = "subjid")
+jhs_dat <- merge(jhs_x, jhs_y, by = "subjid") %>% na.omit()
 ```
 
 check event time distribution
@@ -46,20 +46,52 @@ hist(mesa_y[mesa_y$cvd_event_HF == 1,"cvd_event_HF_t"])
 
 ## Model
 
+### MESA
 ```{r pressure, echo=FALSE}
-surv_formula <- Surv(cvd_event_HF_t, cvd_event_HF) ~ nSES+nRS+nFavFood+nPhysFac +
-  site +
+surv_formula_A <- Surv(cvd_event_noHF_t, cvd_event_noHF) ~ nSES + nRS + nFavFood + nPhysFac +
+  site + 
+  FamIncome + nutrition + PhysAct + currentSmoker + alc +
+  age + gender + Diabetes + hdl + totchol + sbp
+
+surv_formula_B <- Surv(cvd_event_noHF_t, cvd_event_noHF) ~ site + 
   FamIncome + nutrition + PhysAct + currentSmoker + alc +
   age + gender + Diabetes + hdl + totchol + sbp
   
-cox_model <- coxph(surv_formula, data = mesa_bla)
-summary(cox_model)
+cox_model_A <- coxph(surv_formula_A, data = mesa_bla)
+summary(cox_model_A)
+
+cox_model_B <- coxph(surv_formula_B, data = mesa_bla)
+summary(cox_model_B)
 ```
+
+```{r}
+data.frame(Model = c("ModelA", "ModelB"),
+           concordance = c(cox_model_A$concordance[6], cox_model_B$concordance[6]),
+           AIC = c(AIC(cox_model_A), AIC(cox_model_B)),
+           BIC = c(BIC(cox_model_A), BIC(cox_model_B)))
+anova(cox_model_A,cox_model_B)
+```
+
+### JHS
 ```{r pressure, echo=FALSE}
-surv_formula <- Surv(cvd_event_noHF_t, cvd_event_noHF) ~ nSES+nRS+nFavFood+nPhysFac +
+surv_formula_A <- Surv(cvd_event_noHF_t, cvd_event_noHF) ~ nSES + nRS + nFavFood + nPhysFac +
   FamIncome + nutrition + PhysAct + currentSmoker + alc +
   age + gender + Diabetes + hdl + totchol + sbp
+
+surv_formula_B <- Surv(cvd_event_noHF_t, cvd_event_noHF) ~ FamIncome + nutrition + PhysAct + currentSmoker + alc +
+  age + gender + Diabetes + hdl + totchol + sbp
   
-cox_model <- coxph(surv_formula, data = jhs_dat)
-summary(cox_model)
+cox_model_A <- coxph(surv_formula_A, data = jhs_dat)
+summary(cox_model_A)
+
+cox_model_B <- coxph(surv_formula_B, data = jhs_dat)
+summary(cox_model_B)
+```
+
+```{r}
+data.frame(Model = c("ModelA", "ModelB"),
+           concordance = c(cox_model_A$concordance[6], cox_model_B$concordance[6]),
+           AIC = c(AIC(cox_model_A), AIC(cox_model_B)),
+           BIC = c(BIC(cox_model_A), BIC(cox_model_B)))
+anova(cox_model_A,cox_model_B)
 ```
