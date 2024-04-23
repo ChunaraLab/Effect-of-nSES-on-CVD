@@ -1,0 +1,153 @@
+---
+title: "Generalized IPW"
+author: "Xiaoting Chen"
+date: "2024-04-23"
+output: pdf_document
+---
+
+```{r setup, include=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This file is translated from the Generalized_IPW.ipynb file and expanded on the spline function and prediction curve generation.\
+
+
+## Prep
+
+### packages
+```{r}
+library(readr)
+library(tidyr)
+library(ggplot2)
+library(dplyr)
+library(stats) # handle normal distribution calculations
+library(splines) # using splines
+```
+
+### data
+
+```{r}
+mesa_std <- read.csv('../data_processed/MESA/mesa_std.csv')
+
+analysis_feature <- c('cvd_10y_HF', 'cvd_10y_noHF', 'nSES', 'nFavFood', 'nPhysFac', 'nRS',
+                      'FamIncome', 'nutrition', 'PhysAct', 'currentSmoker', 'alc',
+                      'age', 'gender', 'Diabetes', 'hdl', 'totchol', 'sbp',
+                      'site', 'race')
+
+mesa_std <- mesa_std %>%
+  na.omit() %>%
+  select(analysis_feature) %>%
+  mutate(FamIncome = as.factor(FamIncome),
+         nutrition = as.factor(nutrition),
+         PhysAct = as.factor(PhysAct),
+         currentSmoker = as.factor(currentSmoker),
+         alc = as.factor(alc))
+
+mesa_bla_std <- mesa_std[mesa_std$race == 1, ] %>%
+  select(-race)
+```
+
+```{r}
+jhs_std <- read.csv('../data_processed/JHS/jhs_std.csv')
+
+analysis_feature <- c('cvd_10y_HF', 'cvd_10y_noHF', 'nSES', 'nFavFood', 'nPhysFac', 'nRS',
+                      'FamIncome', 'nutrition', 'PhysAct', 'currentSmoker', 'alc',
+                      'age', 'gender', 'Diabetes', 'hdl', 'totchol', 'sbp')
+
+jhs_std <- jhs_std %>%
+  na.omit() %>%
+  select(analysis_feature) %>%
+  mutate(FamIncome = as.factor(FamIncome),
+         nutrition = as.factor(nutrition),
+         PhysAct = as.factor(PhysAct),
+         currentSmoker = as.factor(currentSmoker),
+         alc = as.factor(alc))
+```
+
+
+### function    
+```{r}
+conditional_densities <- function(data, treatment, formula_ps_no_con, formula_ps_con, use_confounders = TRUE) {
+
+  formula <- if(use_confounders) formula_ps_con else formula_ps_no_con
+  
+  # Fit the linear model
+  model <- lm(as.formula(formula), data = data)
+  
+  # Calculate the fitted values and standard deviation of residuals
+  fitted_values <- fitted(model)
+  resid_std <- sd(resid(model))
+  
+  # Calculate the density of nSES under a normal distribution with parameters from the model
+  densities <- dnorm(data[[treatment]], mean = fitted_values, sd = resid_std)
+  
+  # Return the densities as a vector indexed similarly to the fitted values
+  return(setNames(densities, names(fitted_values)))
+}
+
+```
+
+
+## Generalized IPW for single estimate
+
+### estimate
+
+define model
+```{r}
+data <- mesa_std
+treatment = "nRS"
+formula_ps_no = "nRS ~ 1"
+formula_ps = "nRS ~ 1 + nSES + nFavFood + nPhysFac + \
+                C(FamIncome) + C(nutrition) + C(PhysAct) + C(currentSmoker) + C(alc) + \
+                sbp + Diabetes + hdl + totchol + age"
+
+formula_outcome_logit = 'cvd_10y_HF ~ 1 + nRS'
+formula_outcome_sp = 'cvd_10y_HF ~ ns(nRS, df=4)'
+```
+
+Step 1: estimate propensity density
+```{r}
+denominator = conditional_densities(data, treatment, formula_ps_no,formula_ps, use_confounders=T)
+numerator = conditional_densities(data,treatment, formula_ps_no,formula_ps, use_confounders=F)
+propensity_density = numerator / denominator
+
+# exclude extreme values
+threshold <- quantile(propensity_density, 0.99)
+data <- data[propensity_density <= threshold, ]
+propensity_density <- propensity_density[propensity_density <= threshold]
+```
+
+Step 2: Weighted Logistic regression 
+```{r}
+modelA <- glm(formula = formula_outcome_logit, data = data, family = binomial(), weights = propensity_density)
+summary(modelA)
+```
+
+alternative step 2: using spline
+```{r}
+modelB <- glm(formula = formula_outcome_sp, data = data, family = binomial(), weights = propensity_density)
+summary(modelB)
+```
+
+### prediction curve
+
+```{r}
+dosage <- data.frame(nRS = -3:2)  # based on the exposure range; can be different for mesa and jhs
+response <- predict(modelA, newdata = dosage, type = "response")
+plt <- ggplot(data = data.frame(nRS = -3:2, Probability = response), aes(x = nRS, y = Probability)) +
+  geom_line() +
+  labs(x = "nRS value", y = "Probability of experiencing CVD event within 10 years") +
+  ggtitle("Probability of cvd_10y_HF by nRS using jhs_std") +
+  theme_minimal()
+
+ggsave("jhs_nRS_logit.png", plot = plt,
+           path = "../results/prediction_curve/generalized_ipw/cvd_10y_HF",
+           width = 10, height = 8, dpi = 300)
+```
+
+### check assumption
+
+```{r}
+
+```
+
