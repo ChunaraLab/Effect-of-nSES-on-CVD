@@ -41,7 +41,10 @@ mesa_std <- mesa_std %>%
          nutrition = as.factor(nutrition),
          PhysAct = as.factor(PhysAct),
          currentSmoker = as.factor(currentSmoker),
-         alc = as.factor(alc))
+         alc = as.factor(alc),
+         Diabetes = as.factor(Diabetes),
+         site = as.factor(site),
+         race = as.factor(race))
 
 mesa_bla_std <- mesa_std[mesa_std$race == 1, ] %>%
   select(-race)
@@ -61,7 +64,8 @@ jhs_std <- jhs_std %>%
          nutrition = as.factor(nutrition),
          PhysAct = as.factor(PhysAct),
          currentSmoker = as.factor(currentSmoker),
-         alc = as.factor(alc))
+         alc = as.factor(alc),
+         Diabetes = as.factor(Diabetes))
 ```
 
 
@@ -94,11 +98,28 @@ conditional_densities <- function(data, treatment, formula_ps_no_con, formula_ps
 
 define model
 ```{r}
+# mesa
 data <- mesa_std
 treatment = "nRS"
 formula_ps_no = "nRS ~ 1"
+
 formula_ps = "nRS ~ 1 + nSES + nFavFood + nPhysFac + \
-                C(FamIncome) + C(nutrition) + C(PhysAct) + C(currentSmoker) + C(alc) + \
+                FamIncome + nutrition + PhysAct + currentSmoker + alc + \
+                sbp + Diabetes + hdl + totchol + age + \
+                site + race"
+
+formula_outcome_logit = 'cvd_10y_HF ~ 1 + nRS'
+formula_outcome_sp = 'cvd_10y_HF ~ ns(nRS, df=4)'
+```
+
+```{r}
+# jhs
+data <- jhs_std
+treatment = "nRS"
+formula_ps_no = "nRS ~ 1"
+
+formula_ps = "nRS ~ 1 + nSES + nFavFood + nPhysFac + \
+                FamIncome + nutrition + PhysAct + currentSmoker + alc + \
                 sbp + Diabetes + hdl + totchol + age"
 
 formula_outcome_logit = 'cvd_10y_HF ~ 1 + nRS'
@@ -132,18 +153,19 @@ summary(modelB)
 ### prediction curve
 
 ```{r}
-dosage <- data.frame(nRS = -3:2)  # based on the exposure range; can be different for mesa and jhs
+dosage <- data.frame(nRS = -2.5:1)  # based on the exposure range; can be different for mesa and jhs
 response <- predict(modelA, newdata = dosage, type = "response")
-plt <- ggplot(data = data.frame(nRS = -3:2, Probability = response), aes(x = nRS, y = Probability)) +
+plt <- ggplot(data = data.frame(nRS = -2.5:1, Probability = response), aes(x = nRS, y = Probability)) +
   geom_line() +
   labs(x = "nRS value", y = "Probability of experiencing CVD event within 10 years") +
   ggtitle("Probability of cvd_10y_HF by nRS using jhs_std") +
   theme_minimal()
-
+# plt
 ggsave("jhs_nRS_logit.png", plot = plt,
            path = "../results/prediction_curve/generalized_ipw/cvd_10y_HF",
            width = 10, height = 8, dpi = 300)
 ```
+
 
 ### check assumption
 
