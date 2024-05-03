@@ -22,6 +22,7 @@ library(ggplot2)
 library(dplyr)
 library(stats) # handle normal distribution calculations
 library(splines) # using splines
+library(mgcv)
 ```
 
 ### data
@@ -68,6 +69,10 @@ jhs_std <- jhs_std %>%
          Diabetes = as.factor(Diabetes))
 ```
 
+```{r}
+named_datasets <- list(mesa = mesa_std, mesa_bla = mesa_bla_std,jhs = jhs_std)
+names(named_datasets) <- c("mesa", "mesa_bla","jhs")
+```
 
 ### function    
 ```{r}
@@ -82,7 +87,7 @@ conditional_densities <- function(data, treatment, formula_ps_no_con, formula_ps
   fitted_values <- fitted(model)
   resid_std <- sd(resid(model))
   
-  # Calculate the density of nSES under a normal distribution with parameters from the model
+  # Calculate the density of treatment under a normal distribution with parameters from the model
   densities <- dnorm(data[[treatment]], mean = fitted_values, sd = resid_std)
   
   # Return the densities as a vector indexed similarly to the fitted values
@@ -100,30 +105,28 @@ define model
 ```{r}
 # mesa
 data <- mesa_std
-treatment = "nRS"
-formula_ps_no = "nRS ~ 1"
+treatment = "nSES"
+formula_ps_no = "nSES ~ 1"
 
-formula_ps = "nRS ~ 1 + nSES + nFavFood + nPhysFac + \
+formula_ps = "nSES ~ 1 + nRS + nFavFood + nPhysFac + \
                 FamIncome + nutrition + PhysAct + currentSmoker + alc + \
                 sbp + Diabetes + hdl + totchol + age + \
                 site + race"
 
-formula_outcome_logit = 'cvd_10y_HF ~ 1 + nRS'
-formula_outcome_sp = 'cvd_10y_HF ~ ns(nRS, df=4)'
+formula_outcome_logit = 'cvd_10y_HF ~ 1 + nSES'
 ```
 
 ```{r}
 # jhs
 data <- jhs_std
-treatment = "nRS"
-formula_ps_no = "nRS ~ 1"
+treatment = "nSES"
+formula_ps_no = "nSES ~ 1"
 
-formula_ps = "nRS ~ 1 + nSES + nFavFood + nPhysFac + \
+formula_ps = "nSES ~ 1 + nRS + nFavFood + nPhysFac + \
                 FamIncome + nutrition + PhysAct + currentSmoker + alc + \
                 sbp + Diabetes + hdl + totchol + age"
 
-formula_outcome_logit = 'cvd_10y_HF ~ 1 + nRS'
-formula_outcome_sp = 'cvd_10y_HF ~ ns(nRS, df=4)'
+formula_outcome_logit = 'cvd_10y_HF ~ 1 + nSES'
 ```
 
 Step 1: estimate propensity density
@@ -138,38 +141,187 @@ data <- data[propensity_density <= threshold, ]
 propensity_density <- propensity_density[propensity_density <= threshold]
 ```
 
-Step 2: Weighted Logistic regression 
+Step 2: Outcome model
+
+modelA: weighted logit regression
 ```{r}
 modelA <- glm(formula = formula_outcome_logit, data = data, family = binomial(), weights = propensity_density)
 summary(modelA)
 ```
 
-alternative step 2: using spline
+modelB: using glm spline
 ```{r}
+# formula_outcome_sp = 'cvd_10y_HF ~ ns(nSES, df=4)'
+
 modelB <- glm(formula = formula_outcome_sp, data = data, family = binomial(), weights = propensity_density)
 summary(modelB)
 ```
 
+modelC: using GAM with splines
+```{r}
+modelC <- gam(cvd_10y_HF ~ s(nRS), family = binomial(), data = data, weights = propensity_density)
+summary(modelC)
+```
+
+
+
 ### prediction curve
 
+
 ```{r}
-dosage <- data.frame(nRS = -2.5:1)  # based on the exposure range; can be different for mesa and jhs
-response <- predict(modelA, newdata = dosage, type = "response")
-plt <- ggplot(data = data.frame(nRS = -2.5:1, Probability = response), aes(x = nRS, y = Probability)) +
-  geom_line() +
-  labs(x = "nRS value", y = "Probability of experiencing CVD event within 10 years") +
-  ggtitle("Probability of cvd_10y_HF by nRS using jhs_std") +
+# Predicting probabilities
+preds <- predict(modelA, newdata = data.frame(nSES = seq(from = min(data[[treatment]]), to=max(data[[treatment]]), by = 0.1)),
+                 type = "response", se.fit = TRUE)
+
+# Standard errors for logistic regression predictions
+se <- preds$se.fit
+
+# Confidence intervals using the Normal approximation
+data <- data.frame(nSES = seq(from = min(data[[treatment]]), to=max(data[[treatment]]), by = 0.1))
+data$fit <- preds$fit
+data$lwr <- preds$fit - 1.96 * se
+data$upr <- preds$fit + 1.96 * se
+```
+
+```{r}
+ggplot(data, aes(x = nSES)) +
+  geom_ribbon(aes(ymin = lwr, ymax = upr), fill = "blue", alpha = 0.2) +
+  geom_line(aes(y = fit), color = "blue") +
+  geom_hline(yintercept = 0, color = "black") +  
+  labs(title = "Logistic Regression: Fitted Probabilities with Confidence Intervals",
+       x = "nSES", y = "Estimated Probability") +
   theme_minimal()
-# plt
+
+```
+
+```{r}
 ggsave("jhs_nRS_logit.png", plot = plt,
            path = "../results/prediction_curve/generalized_ipw/cvd_10y_HF",
            width = 10, height = 8, dpi = 300)
 ```
 
 
-### check assumption
+### loop to generate figure
 
 ```{r}
+generate_formula <- function(X_var, Y_var, covariates, data_name) {
+  
+  ## add additional variables for mesa and mesa_bla
+  if (data_name == "mesa") {
+    covariates_final = c(covariates, 'race', 'site')
+  } else if (data_name == "mesa_bla") {
+    covariates_final = c(covariates, 'site')
+  } else if (data_name == "jhs") {
+    covariates_final = covariates
+  }
+  covariates_final <- paste(covariates_final, collapse=" + ")
+  
+  ## empty combinations
+  formula_combinations = list()
+  
+  ## generate combinations of X, Y, covariates_final
+  for (i in 1:length(Y_var)) {
+    
+    Y <- Y_var[i]
+    
+    for (j in 1:length(X_var)) {
+
+      # Rotate X variables so a different one is in the first position
+      if (j == 1) {
+        rotated_X_vars <- X_var
+        } else {
+          rotated_X_vars <- c(X_var[j:length(X_var)], X_var[1:(j-1)])
+          }
+      X = rotated_X_vars[1]
+      rotated_part <- paste(rotated_X_vars[-1], collapse=" + ")
+      
+      # Create the three formulas based on the current rotation
+      formula_ps_no_str <- paste(X, "~ 1")
+      formula_ps_no <- as.formula(formula_ps_no_str)
+      
+      formula_ps_str <- paste(X, "~ 1 +", rotated_part, "+", covariates_final)
+      formula_ps <- as.formula(formula_ps_str)
+      
+      formula_outcome_str <- paste(Y, "~",X)
+      formula_outcome <- as.formula(formula_outcome_str)
+      
+       # Add the set of formulas to the list
+      formula_combinations <- c(formula_combinations, list(
+        list(
+          data = data_name,
+          Y = Y,
+          X = X,
+          formula_ps_no = formula_ps_no,
+          formula_ps = formula_ps,
+          formula_outcome = formula_outcome
+          )
+        ))
+    }
+  }
+  return(formula_combinations)
+}
+```
+
+```{r}
+Y_var <- c("cvd_10y_HF", "cvd_10y_noHF")
+X_var <- c('nSES', 'nFavFood', 'nPhysFac', 'nRS')
+covariates <- c('FamIncome', 'nutrition', 'PhysAct', 'currentSmoker', 'alc',
+                'age', 'sbp', 'hdl', 'totchol', 'Diabetes')
+data_name <- "jhs" 
+
+formula_combinations <- generate_formula(X_var, Y_var, covariates, data_name)
+```
+
+```{r}
+for (combo in formula_combinations) {
+  
+  # extract values
+  data_name = combo[['data']]
+  data <- named_datasets[[data_name]]
+  X = combo[['X']]
+  Y = combo[['Y']]
+  formula_ps_no = combo[['formula_ps_no']]
+  formula_ps = combo[['formula_ps']] 
+  formula_outcome = combo[['formula_outcome']]
+  
+  # estimate
+  
+  denominator = conditional_densities(data, X, formula_ps_no,formula_ps, use_confounders=T)
+  numerator = conditional_densities(data,X, formula_ps_no,formula_ps, use_confounders=F)
+  propensity_density = numerator / denominator
+  threshold <- quantile(propensity_density, 0.99)
+  data <- data[propensity_density <= threshold, ]
+  propensity_density <- propensity_density[propensity_density <= threshold]
+  outcome_mod <- glm(formula = formula_outcome, data = data, family = binomial(), weights = propensity_density)
+
+  # Predicting probabilities
+  # Predicting probabilities
+  pred_data <- data.frame(seq(from = min(data[[X]]), to = max(data[[X]]), by = 0.1))
+  names(pred_data) <- X 
+  preds <- predict(outcome_mod, pred_data,type = "response", se.fit = TRUE)
+  
+  # Standard errors for logistic regression predictions
+  se <- preds$se.fit
+  
+  # Confidence intervals using the Normal approximation
+  pred_data$fit <- preds$fit
+  pred_data$lwr <- preds$fit - 1.96 * se
+  pred_data$upr <- preds$fit + 1.96 * se
+  
+  # plot
+  plt <- ggplot(pred_data, aes(x = !!sym(X))) +
+    geom_ribbon(aes(ymin = lwr, ymax = upr), fill = "blue", alpha = 0.2) +
+    geom_line(aes(y = fit), color = "blue") +
+    geom_hline(yintercept = 0, color = "black") +  
+    labs(title = "Logistic Regression: Fitted Probabilities with Confidence Intervals",
+       x = X, y = "Estimated Probability") +
+    theme_minimal()
+  
+  # export
+  ggsave(paste0(data_name,"_",Y,"_",X,".png"), plot = plt,
+           path = "../results/prediction_curve/generalized_ipw",
+           width = 8, height = 6, dpi = 300)
+}
 
 ```
 
