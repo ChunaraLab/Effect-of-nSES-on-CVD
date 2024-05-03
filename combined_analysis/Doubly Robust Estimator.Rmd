@@ -13,34 +13,300 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyr)
 library(ggplot2)
 library(dplyr)
+library(npcausal) # kennedy 2017
+library(mgcv) # gam
+library(locfit) # local regression
 ```
 
 ## Data
 
 
 ```{r}
-mesa <- read.csv("../data_processed/MESA/mesa_std.csv") %>% na.omit()
-mesa_bla <- mesa[mesa["race"]==3,]
-jhs <- read.csv("../data_processed/JHS/jhs_std.csv") %>% na.omit()
+mesa_std <- read.csv('../data_processed/MESA/mesa_std.csv')
+
+analysis_feature <- c('cvd_10y_HF', 'cvd_10y_noHF', 'nSES', 'nFavFood', 'nPhysFac', 'nRS',
+                      'FamIncome', 'nutrition', 'PhysAct', 'currentSmoker', 'alc',
+                      'age', 'gender', 'Diabetes', 'hdl', 'totchol', 'sbp',
+                      'site', 'race')
+
+mesa_std <- mesa_std %>%
+  na.omit() %>%
+  select(analysis_feature) %>%
+  mutate(FamIncome = as.factor(FamIncome),
+         nutrition = as.factor(nutrition),
+         PhysAct = as.factor(PhysAct),
+         currentSmoker = as.factor(currentSmoker),
+         alc = as.factor(alc),
+         Diabetes = as.factor(Diabetes))
+
+mesa_bla_std <- mesa_std[mesa_std$race == 1, ] %>%
+  select(-race)
 ```
+
+```{r}
+jhs_std <- read.csv('../data_processed/JHS/jhs_std.csv')
+
+analysis_feature <- c('cvd_10y_HF', 'cvd_10y_noHF', 'nSES', 'nFavFood', 'nPhysFac', 'nRS',
+                      'FamIncome', 'nutrition', 'PhysAct', 'currentSmoker', 'alc',
+                      'age', 'gender', 'Diabetes', 'hdl', 'totchol', 'sbp')
+
+jhs_std <- jhs_std %>%
+  na.omit() %>%
+  select(analysis_feature) %>%
+  mutate(FamIncome = as.factor(FamIncome),
+         nutrition = as.factor(nutrition),
+         PhysAct = as.factor(PhysAct),
+         currentSmoker = as.factor(currentSmoker),
+         alc = as.factor(alc),
+         Diabetes = as.factor(Diabetes))
+```
+
 
 ## Doubly robust
 
-
-### kennedy 2017
+### using kennedy 2017
 ```{r}
-library(npcausal)
+n <- 10
+x <- as.matrix(jhs_std[,-c(1:3)])   # covariates
+a <- jhs_std[['nSES']]
+y <- jhs_std[['cvd_10y_HF']]
 ```
 
 ```{r}
-n <- 500
-x <- as.matrix(jhs[,-c(1,2,6,13)])   # covariates
-a <- jhs[['nSES']]
-y <- jhs[['Y_10y']]
-```
-
-```{r}
-ce.res <- ctseff(y, a, x, bw.seq = seq(.2, 2, length.out = 100))
+set.seed(0)
+ce.res <- ctseff(y, a, x, bw.seq = seq(.2, 2, length.out = 100), sl.lib = c("SL.mean"))
 plot.ctseff(ce.res)
 ```
 
+
+### using splines/GAM by modifying kennedy 2017 codes 
+
+single estimate
+```{r}
+
+n.pts = 100
+
+a <- jhs_std[['nSES']]
+y <- jhs_std[['cvd_10y_HF']]
+a.rng = c(min(a), max(a))
+
+# Prepare the data 
+# set up evaluation points & matrices for predictions
+x <- jhs_std[,-c(1:2)] %>%
+  mutate(FamIncome = as.factor(FamIncome),
+         nutrition = as.factor(nutrition),
+         PhysAct = as.factor(PhysAct),
+         currentSmoker = as.factor(currentSmoker),
+         alc = as.factor(alc))
+n <- dim(x)[1]
+
+
+a.vals <- seq(a.rng[1], a.rng[2], length.out = n.pts)
+xa.new <- rbind(cbind(x, a), cbind(x[rep(1:n, length(a.vals)), ], a = rep(a.vals, rep(n, length(a.vals)))))
+x.new <- xa.new[, -ncol(xa.new)]
+  
+# Fit models using GAM with spline terms
+
+## ps model
+pimod <- gam(nSES ~ s(nFavFood, bs="cs", k=4) + s(nPhysFac, bs="cs", k=4) + s(nRS, bs="cs", k=4) + 
+                FamIncome + nutrition + PhysAct + currentSmoker + alc + 
+                s(sbp, bs="cs", k=4) + Diabetes + s(hdl, bs="cs", k=4) + 
+               s(totchol, bs="cs", k=4) + s(age, bs="cs", k=4), 
+             data = x, family = gaussian())
+pimod.vals <- predict(pimod)
+  
+pi2mod <- gam((a - pimod.vals)^2 ~ s(nFavFood, bs="cs", k=4) + 
+                s(nPhysFac, bs="cs", k=4) + s(nRS, bs="cs", k=4) + 
+                FamIncome + nutrition + PhysAct + currentSmoker + alc + 
+                s(sbp, bs="cs", k=4) + Diabetes + s(hdl, bs="cs", k=4) + 
+               s(totchol, bs="cs", k=4) + s(age, bs="cs", k=4), data = x.new, family = gaussian())
+pi2mod.vals <- predict(pi2mod)
+
+## outcome model
+mumod <- gam(y ~ s(a, bs = "cs") + s(nFavFood, bs="cs", k=4) + 
+                s(nPhysFac, bs="cs", k=4) + s(nRS, bs="cs", k=4) + 
+                FamIncome + nutrition + PhysAct + currentSmoker + alc + 
+                s(sbp, bs="cs", k=4) + Diabetes + s(hdl, bs="cs", k=4) + 
+               s(totchol, bs="cs", k=4) + s(age, bs="cs", k=4), 
+             data = cbind(x, a), family = gaussian())
+muhat.vals <- predict(mumod, newdata = xa.new)
+
+
+# Calculate standardized treatment effects and their weights
+a.std <- (xa.new$a - pimod.vals) / sqrt(pi2mod.vals)
+  density_a_std <- density(a.std)
+  pihat.vals <- approx(density_a_std$x, density_a_std$y, xout = a.std, method = "linear")$y / sqrt(pi2mod.vals)
+  varpihat <- predict(smooth.spline(a.vals, apply(matrix(pihat.vals, nrow = nrow(x), ncol = length(a.vals)), 2, mean)), x = a)$y
+
+  # Construct pseudo-outcome
+  muhat <- muhat.vals[1:nrow(x)]
+  pihat <- pihat.vals[1:nrow(x)]
+  pseudo.out <- (y - muhat) / (pihat / varpihat) + muhat
+```
+
+```{r}
+
+dbl_rbst <- function(y, a, x, bw.seq, n.pts = 100, a.rng = c(min(a), max(a))) {
+  # Prepare the data
+  x <- data.frame(x)
+  a.vals <- seq(a.rng[1], a.rng[2], length.out = n.pts)
+  xa.new <- rbind(cbind(x, a), cbind(x[rep(1:n, length(a.vals)), ], a = rep(a.vals, rep(n, length(a.vals)))))
+  x.new <- data.frame(x = xa.new[, -ncol(xa.new)])
+
+  # Fit models using GAM with spline terms
+  pimod <- gam(a ~ s(x, bs = "cs"), data = x, family = gaussian())
+  pimod.vals <- predict(pimod, newdata = x.new)
+  
+  pi2mod <- gam((a - pimod.vals)^2 ~ s(x, bs = "cs"), data = x, family = gaussian())
+  pi2mod.vals <- predict(pi2mod, newdata = x.new)
+  
+  mumod <- gam(y ~ s(x, bs = "cs") + s(a, bs = "cs"), data = xa.new, family = gaussian())
+  muhat.vals <- predict(mumod, newdata = xa.new)
+
+  # Calculate standardized treatment effects and their weights
+  a.std <- (xa.new$a - pimod.vals) / sqrt(pi2mod.vals)
+  density_a_std <- density(a.std)
+  pihat.vals <- approx(density_a_std$x, density_a_std$y, xout = a.std, method = "linear")$y / sqrt(pi2mod.vals)
+  varpihat <- predict(smooth.spline(a.vals, apply(matrix(pihat.vals, nrow = nrow(x), ncol = length(a.vals)), 2, mean)), x = a)$y
+
+  # Construct pseudo-outcome
+  muhat <- muhat.vals[1:nrow(x)]
+  pihat <- pihat.vals[1:nrow(x)]
+  pseudo.out <- (y - muhat) / (pihat / varpihat) + muhat
+
+  # Bandwidth selection
+  risk.fn <- function(h) {
+    locfit.a <- locfit(pseudo.out ~ lp(a, h = h), data = data.frame(a = a, pseudo.out = pseudo.out), weights = (1 / (1 - pihat))^2)
+    sum(resid(locfit.a)^2)
+  }
+  
+  bw.risk <- sapply(bw.seq, risk.fn)
+  h.opt <- bw.seq[which.min(bw.risk)]
+
+  # Estimate effect curve with optimal bandwidth
+  effect_curve <- locfit(pseudo.out ~ lp(a, h = h.opt), data = data.frame(a = a, pseudo.out = pseudo.out))
+
+  # Return results and optimal bandwidth
+  list(effect_curve = effect_curve, optimal_bandwidth = h.opt)
+}
+
+
+```
+
+
+```{r}
+set.seed(100)
+ce.res <- dbl_rbst(y, a, x, bw.seq = seq(.2, 2, length.out = 100))
+#plot.ctseff(ce.res)
+```
+
+
+
+
+
+### single estimate using basic structure of DR and glm splines
+
+propensity density 
+```{r}
+conditional_densities <- function(data, treatment, formula_ps_no_con, formula_ps_con, use_confounders = TRUE) {
+
+  formula <- if(use_confounders) formula_ps_con else formula_ps_no_con
+  
+  # Fit the linear model
+  model <- lm(as.formula(formula), data = data)
+  
+  # Calculate the fitted values and standard deviation of residuals
+  fitted_values <- fitted(model)
+  resid_std <- sd(resid(model))
+  
+  # Calculate the density of nSES under a normal distribution with parameters from the model
+  densities <- dnorm(data[[treatment]], mean = fitted_values, sd = resid_std)
+  
+  # Return the densities as a vector indexed similarly to the fitted values
+  return(setNames(densities, names(fitted_values)))
+}
+
+```
+
+define model
+```{r}
+# mesa
+data <- mesa_std
+treatment = "nRS"
+formula_ps_no = "nRS ~ 1"
+
+formula_ps = "nRS ~ 1 + nSES + nFavFood + nPhysFac + \
+                FamIncome + nutrition + PhysAct + currentSmoker + alc + \
+                sbp + Diabetes + hdl + totchol + age + \
+                site + race"
+
+formula_outcome = 'cvd_10y_HF ~ ns(nSES, df=4) + ns(nRS, df=4) + ns(nFavFood, df=4) + ns(nPhysFac, df=4) + \
+                FamIncome + nutrition + PhysAct + currentSmoker + alc + \
+                ns(sbp, df=4)  + Diabetes + ns(hdl, df=4)  + ns(totchol, df=4)  + ns(age, df=4)  + \
+                site + race'
+
+
+```
+
+```{r}
+# jhs
+data <- jhs_std
+treatment = "nRS"
+formula_ps_no = "nRS ~ 1"
+
+formula_ps = "nRS ~ 1 + nSES + nFavFood + nPhysFac + \
+                FamIncome + nutrition + PhysAct + currentSmoker + alc + \
+                sbp + Diabetes + hdl + totchol + age"
+
+formula_outcome = 'cvd_10y_HF ~ ns(nRS, df=4) + ns(nSES, df=4) + ns(nFavFood, df=4) + ns(nPhysFac, df=4) + \
+                FamIncome + nutrition + PhysAct + currentSmoker + alc + \
+                ns(sbp, df=4)  + Diabetes + ns(hdl, df=4)  + ns(totchol, df=4)  + ns(age, df=4)'
+```
+
+Step 1: estimate propensity density
+```{r}
+denominator = conditional_densities(data, treatment, formula_ps_no,formula_ps, use_confounders=T)
+numerator = conditional_densities(data,treatment, formula_ps_no,formula_ps, use_confounders=F)
+propensity_density = numerator / denominator
+
+# exclude extreme values
+threshold <- quantile(propensity_density, 0.99)
+data <- data[propensity_density <= threshold, ]
+propensity_density <- propensity_density[propensity_density <= threshold]
+```
+
+step 2:
+```{r}
+modelB <- glm(formula = formula_outcome, data = data, family = binomial(), weights = propensity_density)
+summary(modelB)
+```
+
+```{r}
+modelC <- gam(cvd_10y_HF ~ s(nSES, k=4) + s(nRS, k=4) + s(nFavFood, k=4) + s(nPhysFac, k=4) + 
+                FamIncome + nutrition + PhysAct + currentSmoker + alc + 
+                s(sbp, k=4)  + Diabetes + ns(hdl, k=4)  + s(totchol, k=4)  + s(age, k=4), 
+              family = binomial(), data = data, weights = propensity_density)
+summary(modelC)
+```
+
+plotting
+```{r}
+pltB <- ggplot(data = data.frame(nRS = data$nRS, Probability = predict(modelB, type = "response")), aes(x = nRS, y = Probability)) +
+  geom_smooth() +
+  labs(x = "nRS value", y = "Probability of experiencing CVD event within 10 years") +
+  ggtitle("Probability of cvd_10y_HF by nRS using jhs_std") +
+  theme_minimal()
+pltB
+
+```
+
+
+```{r}
+pltC <- ggplot(data = data.frame(nSES = data$nSES, Probability = predict(modelC, type = "response")), aes(x = nSES, y = Probability)) +
+  geom_smooth() +
+  labs(x = "nSES value", y = "Probability of experiencing CVD event within 10 years") +
+  ggtitle("Probability of cvd_10y_HF by nSES using mesa_std") +
+  theme_minimal()
+pltC
+
+```

@@ -1,0 +1,65 @@
+---
+title: "doubly_robust_mediation"
+author: "Xiaoting Chen"
+date: "2024-04-25"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Prep
+
+### packages
+```{r}
+library(readr)
+library(tidyr)
+library(ggplot2)
+library(dplyr)
+library(medshift) # mediation analysis
+```
+
+### data
+
+```{r}
+mesa_std <- read.csv('../data_processed/MESA/mesa_std.csv')
+
+analysis_feature <- c('cvd_10y_HF', 'cvd_10y_noHF', 'nSES', 'nFavFood', 'nPhysFac', 'nRS',
+                      'FamIncome', 'nutrition', 'PhysAct', 'currentSmoker', 'alc',
+                      'age', 'gender', 'Diabetes', 'hdl', 'totchol', 'sbp',
+                      'site', 'race')
+
+mesa_std <- mesa_std %>%
+  na.omit() %>%
+  select(analysis_feature) %>%
+  mutate(FamIncome = as.factor(FamIncome),
+         nutrition = as.factor(nutrition),
+         PhysAct = as.factor(PhysAct),
+         currentSmoker = as.factor(currentSmoker),
+         alc = as.factor(alc),
+         Diabetes = as.factor(Diabetes),
+         site = as.factor(site),
+         race = as.factor(race))
+
+mesa_bla_std <- mesa_std[mesa_std$race == 1, ] %>%
+  select(-race)
+```
+
+```{r}
+jhs_std <- read.csv('../data_processed/JHS/jhs_std.csv')
+
+analysis_feature <- c('cvd_10y_HF', 'cvd_10y_noHF', 'nSES', 'nFavFood', 'nPhysFac', 'nRS',
+                      'FamIncome', 'nutrition', 'PhysAct', 'currentSmoker', 'alc',
+                      'age', 'gender', 'Diabetes', 'hdl', 'totchol', 'sbp')
+
+jhs_std <- jhs_std %>%
+  na.omit() %>%
+  select(analysis_feature) %>%
+  mutate(FamIncome = as.factor(FamIncome),
+         nutrition = as.factor(nutrition),
+         PhysAct = as.factor(PhysAct),
+         currentSmoker = as.factor(currentSmoker),
+         alc = as.factor(alc),
+         Diabetes = as.factor(Diabetes))
+```
