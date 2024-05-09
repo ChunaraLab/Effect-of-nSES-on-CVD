@@ -97,7 +97,7 @@ conditional_densities <- function(data, treatment, formula_ps_no_con, formula_ps
 ```
 
 
-## Generalized IPW for single estimate
+## Generalized IPW 
 
 ### estimate
 
@@ -201,7 +201,7 @@ ggsave("jhs_nRS_logit.png", plot = plt,
 ```
 
 
-### loop to generate figure
+## loop to generate figure
 
 ```{r}
 generate_formula <- function(X_var, Y_var, covariates, data_name) {
@@ -266,8 +266,8 @@ generate_formula <- function(X_var, Y_var, covariates, data_name) {
 Y_var <- c("cvd_10y_HF", "cvd_10y_noHF")
 X_var <- c('nSES', 'nFavFood', 'nPhysFac', 'nRS')
 covariates <- c('FamIncome', 'nutrition', 'PhysAct', 'currentSmoker', 'alc',
-                'age', 'sbp', 'hdl', 'totchol', 'Diabetes')
-data_name <- "jhs" 
+                'gender','age', 'sbp', 'hdl', 'totchol', 'Diabetes')
+data_name <- "mesa_bla" 
 
 formula_combinations <- generate_formula(X_var, Y_var, covariates, data_name)
 ```
@@ -319,7 +319,7 @@ for (combo in formula_combinations) {
   
   # export
   ggsave(paste0(data_name,"_",Y,"_",X,".png"), plot = plt,
-           path = "../results/prediction_curve/generalized_ipw",
+           path = "../results/prediction_curve_0509",
            width = 8, height = 6, dpi = 300)
 }
 
