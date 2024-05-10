@@ -1,0 +1,193 @@
+---
+title: "Moderation test"
+author: "Xiaoting Chen"
+date: "2024-05-09"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Prep
+
+### packages
+```{r, warning=FALSE}
+library(tidyr)
+library(ggplot2)
+library(dplyr)
+```
+
+### data
+
+```{r}
+diet_phys_map <- c('0' = 1, '1' = 2, '2' = 3)
+```
+
+```{r}
+mesa_std <- read.csv('../data_processed/MESA/mesa_std.csv')
+
+analysis_feature <- c('cvd_10y_HF', 'cvd_10y_noHF', 'nSES', 'nFavFood', 'nPhysFac', 'nRS',
+                      'FamIncome', 'nutrition', 'PhysAct', 'currentSmoker', 'alc',
+                      'age', 'gender', 'Diabetes', 'hdl', 'totchol', 'sbp',
+                      'site', 'race')
+
+mesa_std <- mesa_std %>%
+  na.omit() %>%
+  select(analysis_feature) %>%
+  mutate( # treat ind behavirol variables as conitnuous, avoid partial significant 
+    Diabetes = as.factor(Diabetes),
+         site = as.factor(site),
+         race = as.factor(race))  %>%
+  mutate( # recode 
+    nutrition = recode(nutrition, !!!diet_phys_map),
+    PhysAct = recode(PhysAct, !!!diet_phys_map)
+  )
+
+
+mesa_bla_std <- mesa_std[mesa_std$race == 1, ] %>%
+  select(-race)
+```
+
+```{r}
+jhs_std <- read.csv('../data_processed/JHS/jhs_std.csv')
+
+analysis_feature <- c('cvd_10y_HF', 'cvd_10y_noHF', 'nSES', 'nFavFood', 'nPhysFac', 'nRS',
+                      'FamIncome', 'nutrition', 'PhysAct', 'currentSmoker', 'alc',
+                      'age', 'gender', 'Diabetes', 'hdl', 'totchol', 'sbp')
+
+jhs_std <- jhs_std %>%
+  na.omit() %>%
+  select(analysis_feature) %>%
+  mutate(Diabetes = as.factor(Diabetes)) %>%
+  mutate( # recode 
+    nutrition = recode(nutrition, !!!diet_phys_map),
+    PhysAct = recode(PhysAct, !!!diet_phys_map)
+  )
+```
+
+```{r}
+named_datasets <- list(mesa = mesa_std, mesa_bla = mesa_bla_std,jhs = jhs_std)
+names(named_datasets) <- c("mesa", "mesa_bla","jhs")
+```
+
+### generate combos
+
+function
+```{r}
+generate_M_combo <- function(X_var, Y_var, M_var, data_name) {
+  
+  base_Z <- c('age', 'gender', 'Diabetes', 'hdl', 'totchol', 'sbp')
+  
+  ## add additional variables for mesa and mesa_bla
+  if (data_name == "mesa") {
+    covariates = c(base_Z, 'race', 'site')
+  } else if (data_name == "mesa_bla") {
+    covariates = c(base_Z, 'site')
+  } else if (data_name == "jhs") {
+    covariates = base_Z
+  }
+  
+  ## empty combinations
+  M_combos = list()
+  
+  ## generate combinations of X, Y, M + covariates_final
+  for (y in Y_var) {
+    
+    for (x in X_var) {
+      
+      for (m in M_var) {
+        
+        # Add the set of formulas to the list
+        M_combos <- c(M_combos, 
+                      list(list(
+                        data = data_name,
+                        Y = y,
+                        X = x,
+                        M = m,
+                        covariates_final = c(covariates, setdiff(X_var, x), setdiff(M_var, m))
+                        )
+                        )
+                      )
+      }
+       
+    }
+  }
+  return(M_combos)
+}
+```
+
+
+```{r}
+Y_var <- c("cvd_10y_HF", "cvd_10y_noHF")
+X_var <- c('nSES', 'nFavFood', 'nPhysFac', 'nRS')
+M_var <- c('FamIncome', 'nutrition', 'PhysAct', 'currentSmoker', 'alc')
+covariates <- c('gender','age', 'sbp', 'hdl', 'totchol', 'Diabetes')
+data_name <- "mesa" 
+
+mesa_combos <- generate_M_combo(X_var, Y_var, M_var, "mesa")
+mesa_bla_combos <- generate_M_combo(X_var, Y_var, M_var, "mesa_bla")
+jhs_combos <- generate_M_combo(X_var, Y_var, M_var, "jhs")
+
+all_combos <- c(mesa_combos, mesa_bla_combos, jhs_combos)
+```
+
+## Run test
+
+```{r}
+report_df <- data.frame(
+  Data = character(),
+  Y = character(),
+  X = character(),
+  moderator = character(),
+  other = character(),
+  interaction_coef = numeric(),
+  interaction_pvalue = numeric(),
+  significant = character(),
+  stringsAsFactors = FALSE 
+)
+
+for (combo in all_combos) {
+  # define the fomula
+  data_name = combo$data
+  data <- named_datasets[[data_name]]
+  
+  Y <- combo$Y
+  X <- combo$X
+  M <- combo$M
+  Z <- combo$covariates_final
+  
+  model_vars <- c(X, M, Z, paste(X, M, sep=":"))
+  formula_string <- paste(paste(Y), "~", paste(model_vars, collapse=" + "))
+  formula <- as.formula(formula_string)
+  
+  # fit model
+  interact_mod <- glm(formula = formula, data = data, family = binomial())
+  summary_model <- summary(interact_mod)
+
+  # store the result
+  coefficients <- summary_model$coefficients
+  last_term <- coefficients[nrow(coefficients), ]
+  last_coefficient <- last_term["Estimate"]
+  last_pvalue <- last_term["Pr(>|z|)"]
+  
+  new_df <- data.frame(
+              Data = data_name,
+              Y = Y,
+              X = X,
+              moderator = M,
+              interaction_coef = last_coefficient,
+              interaction_pvalue = last_pvalue,
+              significant = ifelse(last_pvalue <= 0.05, "Y", "N"),
+              stringsAsFactors = FALSE  # Ensure that text columns are not converted to factors
+            )
+
+  report_df <- rbind(report_df, new_df)
+
+}
+```
+
+```{r}
+write.csv(report_df, "../results/moderation_result/moderation_result.csv", row.names = FALSE, quote = TRUE, sep = ",", fileEncoding = "UTF-8")
+```
+
