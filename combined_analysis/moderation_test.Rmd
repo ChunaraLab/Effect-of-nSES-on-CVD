@@ -21,7 +21,7 @@ library(dplyr)
 ### data
 
 ```{r}
-diet_phys_map <- c('0' = 1, '1' = 2, '2' = 3)
+ind_feature_map <- c('0' = 1, '1' = 2, '2' = 3)
 ```
 
 ```{r}
@@ -33,15 +33,16 @@ analysis_feature <- c('cvd_10y_HF', 'cvd_10y_noHF', 'nSES', 'nFavFood', 'nPhysFa
                       'site', 'race')
 
 mesa_std <- mesa_std %>%
-  na.omit() %>%
   select(analysis_feature) %>%
   mutate( # treat ind behavirol variables as conitnuous, avoid partial significant 
     Diabetes = as.factor(Diabetes),
          site = as.factor(site),
          race = as.factor(race))  %>%
-  mutate( # recode 
-    nutrition = recode(nutrition, !!!diet_phys_map),
-    PhysAct = recode(PhysAct, !!!diet_phys_map)
+  mutate( # recode to avoid 0
+    nutrition = recode(nutrition, !!!ind_feature_map),
+    PhysAct = recode(PhysAct, !!!ind_feature_map),
+    currentSmoker = recode(currentSmoker, !!!ind_feature_map),
+    alc = recode(alc, !!!ind_feature_map)
   )
 
 
@@ -57,12 +58,13 @@ analysis_feature <- c('cvd_10y_HF', 'cvd_10y_noHF', 'nSES', 'nFavFood', 'nPhysFa
                       'age', 'gender', 'Diabetes', 'hdl', 'totchol', 'sbp')
 
 jhs_std <- jhs_std %>%
-  na.omit() %>%
   select(analysis_feature) %>%
   mutate(Diabetes = as.factor(Diabetes)) %>%
   mutate( # recode 
-    nutrition = recode(nutrition, !!!diet_phys_map),
-    PhysAct = recode(PhysAct, !!!diet_phys_map)
+     nutrition = recode(nutrition, !!!ind_feature_map),
+    PhysAct = recode(PhysAct, !!!ind_feature_map),
+    currentSmoker = recode(currentSmoker, !!!ind_feature_map),
+    alc = recode(alc, !!!ind_feature_map)
   )
 ```
 
@@ -130,6 +132,7 @@ mesa_bla_combos <- generate_M_combo(X_var, Y_var, M_var, "mesa_bla")
 jhs_combos <- generate_M_combo(X_var, Y_var, M_var, "jhs")
 
 all_combos <- c(mesa_combos, mesa_bla_combos, jhs_combos)
+# saveRDS(all_combos, "all_combos.rds")
 ```
 
 ## Run test
