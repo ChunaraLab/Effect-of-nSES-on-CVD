@@ -1,7 +1,7 @@
 ---
 title: "Generalized IPW"
 author: "Xiaoting Chen"
-date: "2024-04-23"
+date: "2024-05-24"
 output: pdf_document
 ---
 
@@ -30,12 +30,14 @@ library(mgcv)
 ```{r}
 all_combos <- readRDS("all_combos.rds")
 
-# read in moderation results
+# read in moderation and mediation results
 significant_moderation <- read.csv("../results/moderation_result/moderation_result.csv") %>%
   filter(significant == "Y") %>%
   select(1:4) %>%
   rename(data_name = Data,
          M = moderator)
+
+significant_mediation <- read.csv("../results/mediation_result/significant_mediat.csv")
 ```
 
 ```{r}
@@ -111,110 +113,6 @@ conditional_densities <- function(data, treatment, formula_ps_no_con, formula_ps
   return(setNames(densities, names(fitted_values)))
 }
 
-```
-
-
-## single estimate - Generalized IPW 
-
-### estimate
-
-define model
-```{r}
-# mesa
-data <- mesa_std
-treatment = "nSES"
-formula_ps_no = "nSES ~ 1"
-
-formula_ps = "nSES ~ 1 + nRS + nFavFood + nPhysFac + \
-                FamIncome + nutrition + PhysAct + currentSmoker + alc + \
-                sbp + Diabetes + hdl + totchol + age + \
-                site + race"
-
-formula_outcome_logit = 'cvd_10y_HF ~ 1 + nSES'
-```
-
-```{r}
-# jhs
-data <- jhs_std
-treatment = "nSES"
-formula_ps_no = "nSES ~ 1"
-
-formula_ps = "nSES ~ 1 + nRS + nFavFood + nPhysFac + \
-                FamIncome + nutrition + PhysAct + currentSmoker + alc + \
-                sbp + Diabetes + hdl + totchol + age"
-
-formula_outcome_logit = 'cvd_10y_HF ~ 1 + nSES'
-```
-
-Step 1: estimate propensity density
-```{r}
-denominator = conditional_densities(data, treatment, formula_ps_no,formula_ps, use_confounders=T)
-numerator = conditional_densities(data,treatment, formula_ps_no,formula_ps, use_confounders=F)
-propensity_density = numerator / denominator
-
-# exclude extreme values
-threshold <- quantile(propensity_density, 0.99)
-data <- data[propensity_density <= threshold, ]
-propensity_density <- propensity_density[propensity_density <= threshold]
-```
-
-Step 2: Outcome model
-
-modelA: weighted logit regression
-```{r}
-modelA <- glm(formula = formula_outcome_logit, data = data, family = binomial(), weights = propensity_density)
-summary(modelA)
-```
-
-modelB: using glm spline
-```{r}
-# formula_outcome_sp = 'cvd_10y_HF ~ ns(nSES, df=4)'
-
-modelB <- glm(formula = formula_outcome_sp, data = data, family = binomial(), weights = propensity_density)
-summary(modelB)
-```
-
-modelC: using GAM with splines
-```{r}
-modelC <- gam(cvd_10y_HF ~ s(nRS), family = binomial(), data = data, weights = propensity_density)
-summary(modelC)
-```
-
-
-
-### prediction curve
-
-
-```{r}
-# Predicting probabilities
-preds <- predict(modelA, newdata = data.frame(nSES = seq(from = min(data[[treatment]]), to=max(data[[treatment]]), by = 0.1)),
-                 type = "response", se.fit = TRUE)
-
-# Standard errors for logistic regression predictions
-se <- preds$se.fit
-
-# Confidence intervals using the Normal approximation
-data <- data.frame(nSES = seq(from = min(data[[treatment]]), to=max(data[[treatment]]), by = 0.1))
-data$fit <- preds$fit
-data$lwr <- preds$fit - 1.96 * se
-data$upr <- preds$fit + 1.96 * se
-```
-
-```{r}
-ggplot(data, aes(x = nSES)) +
-  geom_ribbon(aes(ymin = lwr, ymax = upr), fill = "blue", alpha = 0.2) +
-  geom_line(aes(y = fit), color = "blue") +
-  geom_hline(yintercept = 0, color = "black") +  
-  labs(title = "Logistic Regression: Fitted Probabilities with Confidence Intervals",
-       x = "nSES", y = "Estimated Probability") +
-  theme_minimal()
-
-```
-
-```{r}
-ggsave("jhs_nRS_logit.png", plot = plt,
-           path = "../results/prediction_curve/generalized_ipw/cvd_10y_HF",
-           width = 10, height = 8, dpi = 300)
 ```
 
 
@@ -338,9 +236,71 @@ for (combo in all_combos) {
 ```
 
 ```{r}
-ipw_final <- report_df %>%
+# exclude duplicate rows
+ipw_moderate <- report_df %>%
   distinct() 
-write.csv(ipw_final, "../results/generalized_IPW/ipw_final_intercept.csv", row.names = FALSE)
+
+ipw_moderate <- ipw_moderate[-c(2,8,13,18,21,24,27), ]# exclude the rows that should have been moderated
+```
+
+### modify the mediated effect
+```{r}
+ipw_mediate <- ipw_moderate 
+ipw_mediate$mediator <- NA
+ipw_mediate$mediator_coef <- NA
+ipw_mediate$mediator_pvalue <- NA
+
+ipw_mediate[1,"mediator"] <- "nutrition&PhysAct"
+ipw_mediate[5,"mediator"] <- "nutrition"
+```
+
+```{r}
+data <- mesa_std
+treatment = "nSES"
+formula_ps_no = "nSES ~ 1"
+
+formula_ps = "nSES ~ 1 + nRS + nFavFood + nPhysFac + \
+                FamIncome + nutrition + PhysAct + currentSmoker + alc + \
+                sbp + Diabetes + hdl + totchol + age + \
+                site + race"
+
+formula_outcome_logit = 'cvd_10y_noHF ~ 1 + nSES + nutrition'
+```
+
+Step 1: estimate propensity density
+```{r}
+denominator = conditional_densities(data, treatment, formula_ps_no,formula_ps, use_confounders=T)
+numerator = conditional_densities(data,treatment, formula_ps_no,formula_ps, use_confounders=F)
+propensity_density = numerator / denominator
+
+# exclude extreme values
+threshold <- quantile(propensity_density, 0.99)
+data <- data[propensity_density <= threshold, ]
+propensity_density <- propensity_density[propensity_density <= threshold]
+```
+
+Step 2: Outcome model
+```{r}
+modelA <- glm(formula = formula_outcome_logit, data = data, family = binomial(), weights = propensity_density)
+summary(modelA)
+```
+```{r}
+ipw_mediate[1,"intercept"] <- -1.29558
+ipw_mediate[1,"X_coef"] <- 0.12714
+ipw_mediate[1,"X_pvalue"] <- 0.04996
+ipw_mediate[1,"mediator_coef"] <- "-0.34408;-0.15921"
+ipw_mediate[1,"mediator_pvalue"] <- "0.00319;0.01471"
+
+ipw_mediate[5,"intercept"] <- -1.7693
+ipw_mediate[5,"X_coef"] <- 0.2386
+ipw_mediate[5,"X_pvalue"] <- 0.000937
+ipw_mediate[5,"mediator_coef"] <- -0.4484
+ipw_mediate[5,"mediator_pvalue"] <- 0.000552
+```
+
+
+```{r}
+write.csv(ipw_mediate, "../results/generalized_IPW/ipw_final_0524.csv", row.names = FALSE)
 ```
 
 
@@ -349,9 +309,7 @@ write.csv(ipw_final, "../results/generalized_IPW/ipw_final_intercept.csv", row.n
 # ipw_final <- read.csv("../results/generalized_IPW/ipw_final.csv")
 
 plot_ipw <- ipw_final %>%
-  filter(X_pvalue <= 0.05) %>% # select significant rows
-  filter(row_number() != 9)# remove the not moderated row
-
+  filter(X_pvalue <= 0.05) 
 ```
 
 ```{r}
