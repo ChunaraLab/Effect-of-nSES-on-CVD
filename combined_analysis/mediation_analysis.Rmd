@@ -225,8 +225,9 @@ significant_mediat <- report_df %>%
          ACME = b2*b3,
          Total_effect = b1) %>%
   select(-c(5:12))
+```
 
-
+```{r}
 write.csv(significant_mediat, "../results/mediation_result/significant_mediat.csv", row.names = FALSE)
 write.csv(report_df, "../results/mediation_result/mediation_result_complete.csv", row.names = FALSE)
 ```
