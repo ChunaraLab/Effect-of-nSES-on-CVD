@@ -75,6 +75,10 @@ names(named_datasets) <- c("mesa", "mesa_bla","jhs")
 
 ### generate combos
 
+```{r}
+all_combos <- readRDS("all_combos.rds")
+```
+
 function
 ```{r}
 generate_M_combo <- function(X_var, Y_var, M_var, data_name) {
@@ -146,6 +150,8 @@ report_df <- data.frame(
   other = character(),
   interaction_coef = numeric(),
   interaction_pvalue = numeric(),
+  interaction_ci_lwr = numeric(),
+  interaction_ci_upr = numeric(),
   significant = character(),
   stringsAsFactors = FALSE 
 )
@@ -173,6 +179,10 @@ for (combo in all_combos) {
   last_term <- coefficients[nrow(coefficients), ]
   last_coefficient <- last_term["Estimate"]
   last_pvalue <- last_term["Pr(>|z|)"]
+  last_term_name <- tail(names(coef(interact_mod)), 1)
+  last_term_ci <- confint(interact_mod, parm = last_term_name)
+  interaction_ci_lwr <- last_term_ci["2.5 %"]
+  interaction_ci_upr <- last_term_ci["97.5 %"]
   
   new_df <- data.frame(
               Data = data_name,
@@ -181,6 +191,8 @@ for (combo in all_combos) {
               moderator = M,
               interaction_coef = last_coefficient,
               interaction_pvalue = last_pvalue,
+              interaction_ci_lwr = interaction_ci_lwr,
+              interaction_ci_upr = interaction_ci_upr,
               significant = ifelse(last_pvalue <= 0.05, "Y", "N"),
               stringsAsFactors = FALSE  # Ensure that text columns are not converted to factors
             )
@@ -191,6 +203,14 @@ for (combo in all_combos) {
 ```
 
 ```{r}
-write.csv(report_df, "../results/moderation_result/moderation_result.csv", row.names = FALSE, quote = TRUE, sep = ",", fileEncoding = "UTF-8")
+write.csv(report_df, "../results/moderation_result/moderation_result_0529.csv", row.names = FALSE, quote = TRUE, sep = ",", fileEncoding = "UTF-8")
 ```
 
+```{r}
+moderation_significant <- report_df %>%
+  filter(significant == "Y") %>%
+  filter(Data != "mesa_bla") %>%
+  select(-significant)
+
+write.csv(moderation_significant, "../results/moderation_result/moderation_significant_0529.csv", row.names = FALSE, quote = TRUE, sep = ",", fileEncoding = "UTF-8")
+```
