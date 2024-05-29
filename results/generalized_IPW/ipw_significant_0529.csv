@@ -1,0 +1,8 @@
+"Data","Y","X","X_coef","X_pvalue","moderator","interaction_coef","interaction_pvalue","mediator","mediator_coef","mediator_pvalue"
+"mesa","cvd_10y_HF","nSES",0.12714,0.04996,NA,NA,NA,"nutrition&PhysAct","-0.34408;-0.15921","0.00319;0.01471"
+"mesa","cvd_10y_noHF","nSES",0.2386,0.000937,NA,NA,NA,"nutrition","-0.4484","0.000552"
+"mesa","cvd_10y_noHF","nPhysFac",0.84448,0.00237,"alc",-0.44234,0.00768,NA,NA,NA
+"jhs","cvd_10y_HF","nSES",0.50657,0.00368,"PhysAct",-0.25204,0.00847,NA,NA,NA
+"jhs","cvd_10y_HF","nRS",0.22295,0.00107,NA,NA,NA,NA,NA,NA
+"jhs","cvd_10y_noHF","nSES",0.71399,0.00124,"PhysAct",-0.31146,0.01018,NA,NA,NA
+"jhs","cvd_10y_noHF","nRS",0.21775,0.01007,NA,NA,NA,NA,NA,NA

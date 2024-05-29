@@ -304,6 +304,17 @@ write.csv(ipw_mediate, "../results/generalized_IPW/ipw_final_0528.csv", row.name
 ```
 
 
+```{r}
+ipw_significant <- read.csv("/Users/cxt/Documents/research/CVD/Effect-of-nSES-on-CVD/results/generalized_IPW/ipw_final_0528.csv") %>%
+  filter(X_pvalue <= 0.05) %>%
+  filter(Data != "mesa_bla") %>%
+  select(-c(4,5)) %>%
+  select(1,2,3,5,6,4,7:11)
+
+write.csv(ipw_significant, "../results/generalized_IPW/ipw_significant_0529.csv", row.names = FALSE)
+```
+
+
 ### plot prediction curve for significant results
 ```{r}
 ipw_final <- read.csv("../results/generalized_IPW/ipw_final_0528.csv")
