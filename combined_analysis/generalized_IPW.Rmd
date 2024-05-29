@@ -159,7 +159,7 @@ for (combo in all_combos) {
     formula_ps_str <- paste(X, "~ ", M, "+" ,paste(Z, collapse=" + "))
     formula_ps <- as.formula(formula_ps_str)
     
-    formula_outcome_str <- paste(Y, "~",X,"+",paste(X, M, sep=":"))
+    formula_outcome_str <- paste(Y, "~",X,"+",M,"+",paste(X, M, sep=":"))
     formula_outcome <- as.formula(formula_outcome_str)
     
     moderator <- M
@@ -300,13 +300,13 @@ ipw_mediate[5,"mediator_pvalue"] <- 0.000552
 
 
 ```{r}
-write.csv(ipw_mediate, "../results/generalized_IPW/ipw_final_0524.csv", row.names = FALSE)
+write.csv(ipw_mediate, "../results/generalized_IPW/ipw_final_0528.csv", row.names = FALSE)
 ```
 
 
 ### plot prediction curve for significant results
 ```{r}
-# ipw_final <- read.csv("../results/generalized_IPW/ipw_final.csv")
+ipw_final <- read.csv("../results/generalized_IPW/ipw_final_0528.csv")
 
 plot_ipw <- ipw_final %>%
   filter(X_pvalue <= 0.05) 
@@ -350,7 +350,7 @@ for (i in 1:nrow(plot_ipw)) {
   
   formula_outcome_str <- ifelse(is.na(moderator), 
                             paste(Y, "~",X), 
-                            paste(Y, "~",X,"+",paste(X, moderator, sep=":"))
+                            paste(Y, "~",X,"+",moderator,"+",paste(X, moderator, sep=":"))
                             )
   formula_outcome <- as.formula(formula_outcome_str)
   
@@ -458,15 +458,17 @@ for (i in 1:nrow(plot_ipw)) {
   }
   
   # export plot
-  ggsave(paste0(data_name,"_",Y,"_",X,".png"), plot = plt,
-           path = "../results/generalized_IPW/significant_prediction_curve",
-           width = 8, height = 6, dpi = 300)
+  # ggsave(paste0(data_name,"_",Y,"_",X,".png"), plot = plt,
+  #          path = "../results/generalized_IPW/significant_prediction_curve",
+  #          width = 8, height = 6, dpi = 300)
 }
 
 ```
-**test**
+
+
+### plot: X range +- 2sd
 ```{r}
-for (i in 4) {
+for (i in 1:nrow(plot_ipw)) {
   print(i)
   
   # extract values
@@ -503,7 +505,7 @@ for (i in 4) {
   
   formula_outcome_str <- ifelse(is.na(moderator), 
                             paste(Y, "~",X), 
-                            paste(Y, "~",X,"+",paste(X, moderator, sep=":"))
+                            paste(Y, "~",X,"+",moderator,"+",paste(X, moderator, sep=":"))
                             )
   formula_outcome <- as.formula(formula_outcome_str)
   
@@ -518,7 +520,8 @@ for (i in 4) {
     
   # Predicted probabilities and plotting
   if (is.na(moderator)) {
-    pred_data <- data.frame(seq(from = min(data[[X]]), to = max(data[[X]]), by = 0.1))
+    pred_data <- data.frame(seq(from = mean(data[[X]])-2*sd(data[[X]]), 
+                                to = mean(data[[X]])+2*sd(data[[X]]), by = 0.1))
     names(pred_data) <- X
     preds <- predict(outcome_mod, pred_data,type = "response", se.fit = TRUE)
     se <- preds$se.fit
@@ -535,10 +538,17 @@ for (i in 4) {
       theme_minimal()
 
   } else if (moderator == "alc") {
-    X_seq <- seq(from = min(data[[X]]), to = max(data[[X]]), by = 0.1)
-    X_length <- length(X_seq)
-    pred_data <- data.frame(X = rep(X_seq, 2),
-                            alc = c(rep(1, X_length), rep(2, X_length)))
+    stats <- data %>%
+      group_by(alc) %>%
+      summarize(mean_X = mean(!!sym(X), na.rm = TRUE), 
+                sd_X = sd(!!sym(X), na.rm = TRUE))
+    
+    pred_data <- do.call(rbind, lapply(1:2, function(level) {
+      mean_X <- stats$mean_X[stats$alc == level]
+      sd_X <- stats$sd_X[stats$alc == level]
+      X_seq <- seq(from = mean_X - 2 * sd_X, to = mean_X + 2 * sd_X, by = 0.1)
+      data.frame(X = X_seq, alc = rep(level, length(X_seq)))
+    }))
     names(pred_data) <- c(X, "alc")
     
     preds <- predict(outcome_mod, pred_data,type = "response", se.fit = TRUE)
@@ -551,6 +561,7 @@ for (i in 4) {
                                  group = factor(alc, levels = c(1,2), labels = c("No", "Yes")), 
                                  color = factor(alc))) +
       geom_line() +
+      geom_ribbon(aes(ymin = lwr, ymax = upr), alpha = 0.2) +
       geom_hline(yintercept = 0, color = "black") +
       scale_color_manual(values = c("blue", "red"),  labels = c("No", "Yes"),
                          name = "Alcohol Drinking") +
@@ -559,64 +570,105 @@ for (i in 4) {
       theme_minimal()
 
   } else if (moderator == "FamIncome") {
-    X_seq <- seq(from = min(data[[X]]), to = max(data[[X]]), by = 0.1)
-    X_length <- length(X_seq)
-    pred_data <- data.frame(X = rep(X_seq, 1),
-                            FamIncome = c(rep(4, X_length)))
+    stats <- data %>%
+      group_by(FamIncome) %>%
+      summarize(mean_X = mean(!!sym(X), na.rm = TRUE), 
+                sd_X = sd(!!sym(X), na.rm = TRUE))
+   
+    pred_data <- do.call(rbind, lapply(1:4, function(level) {
+      mean_X <- stats$mean_X[stats$FamIncome == level]
+      sd_X <- stats$sd_X[stats$FamIncome == level]
+      X_seq <- seq(from = mean_X - 2 * sd_X, to = mean_X + 2 * sd_X, by = 0.1)
+      data.frame(X = X_seq, FamIncome = rep(level, length(X_seq)))
+    }))
     names(pred_data) <- c(X, "FamIncome")
     
-    preds <- predict(outcome_mod, pred_data,type = "response", se.fit = TRUE)
+    preds <- predict(outcome_mod, pred_data, type = "response", se.fit = TRUE)
     se <- preds$se.fit
     pred_data$fit <- preds$fit
     pred_data$lwr <- preds$fit - 1.96 * se
     pred_data$upr <- preds$fit + 1.96 * se
     
     plt <- ggplot(pred_data, aes(x = !!sym(X), y = fit, 
-                                 group = factor(FamIncome, levels = c(1,2,3,4)), 
+                                 group = factor(FamIncome, levels = c(1, 2, 3, 4)),  
                                  color = factor(FamIncome))) +
-      geom_ribbon(aes(ymin = lwr, ymax = upr), alpha = 0.2) +
       geom_line() +
+      geom_ribbon(aes(ymin = lwr, ymax = upr), alpha = 0.2) +
       geom_hline(yintercept = 0, color = "black") +
-      scale_color_manual(values = c("orange"),  
-                         labels = c("$75,000+"), 
+      scale_color_manual(values = c("red", "blue", "green", "orange"), 
+                         labels = c("$0-11,999", "$12,000-24,999", "$25,000-74,999", "$75,000+"),
                          name = "Family Income") +
       labs(title = "Predicted Probabilities of Positive Outcome",
-         x = X, y = "Estimated Probability") +
+           x = X, y = "Estimated Probability") +
       theme_minimal()
 
+
   } else if (moderator == "PhysAct") {
-    X_seq <- seq(from = min(data[[X]]), to = max(data[[X]]), by = 0.1)
-    X_length <- length(X_seq)
-    pred_data <- data.frame(X = rep(X_seq, 1),
-                            PhysAct = c(rep(1, X_length)))
+    stats <- data %>%
+      group_by(PhysAct) %>%
+      summarize(mean_X = mean(!!sym(X), na.rm = TRUE), 
+                sd_X = sd(!!sym(X), na.rm = TRUE))
+    
+    # Generate prediction data
+    pred_data <- do.call(rbind, lapply(1:3, function(level) {
+      mean_X <- stats$mean_X[stats$PhysAct == level]
+      sd_X <- stats$sd_X[stats$PhysAct == level]
+      X_seq <- seq(from = mean_X - 2 * sd_X, to = mean_X + 2 * sd_X, by = 0.1)
+      data.frame(X = X_seq, PhysAct = rep(level, length(X_seq)))
+    }))
+    
+    # Set column names
     names(pred_data) <- c(X, "PhysAct")
     
-    preds <- predict(outcome_mod, pred_data,type = "response", se.fit = TRUE)
+    # Get predictions
+    preds <- predict(outcome_mod, pred_data, type = "response", se.fit = TRUE)
     se <- preds$se.fit
     pred_data$fit <- preds$fit
     pred_data$lwr <- preds$fit - 1.96 * se
     pred_data$upr <- preds$fit + 1.96 * se
     
+    # Plot
     plt <- ggplot(pred_data, aes(x = !!sym(X), y = fit, 
-                                 group = factor(PhysAct),  
+                                 group = factor(PhysAct, levels = c(1, 2, 3)),  
                                  color = factor(PhysAct))) +
-      geom_ribbon(aes(ymin = lwr, ymax = upr), alpha = 0.2) +
       geom_line() +
+      geom_ribbon(aes(ymin = lwr, ymax = upr), alpha = 0.2) +
       geom_hline(yintercept = 0, color = "black") +
-      scale_color_manual(values = c("blue"),  labels = c("Poor"),
+      scale_color_manual(values = c("blue", "red", "green"), 
+                         labels = c("Poor", "Intermediate", "Ideal"),
                          name = "Physical Activity") +
       labs(title = "Predicted Probabilities of Positive Outcome",
-         x = X, y = "Estimated Probability") +
+           x = X, y = "Estimated Probability") +
       theme_minimal()
   } else {
     print("error")
   }
   
   # export plot
-  ggsave(paste0(data_name,"_",Y,"_",X,"_4",".png"), plot = plt,
-           path = "../results/generalized_IPW/test_subgroup",
+  ggsave(paste0(data_name,"_",Y,"_",X,".png"), plot = plt,
+           path = "../results/generalized_IPW/significant_prediction_curve_0528",
            width = 8, height = 6, dpi = 300)
 }
 
+```
+
+```{r}
+test_dat <- data %>%
+  mutate(PhysAct = factor(PhysAct, levels = c(1, 2, 3)))
+
+# Create the density plot
+plt_density <- ggplot(test_dat, aes(x = !!sym("nSES"), fill = PhysAct, color = PhysAct)) +
+  geom_density(alpha = 0.4) +
+  scale_fill_manual(values = c("blue", "red", "green"), 
+                    labels = c("Poor", "Intermediate", "Ideal"),
+                    name = "Physical Activity") +
+  scale_color_manual(values = c("blue", "red", "green"), 
+                     labels = c("Poor", "Intermediate", "Ideal"),
+                     name = "Physical Activity") +
+  labs(title = "Density Plot of X by Levels of Physical Activity",
+       x = X, y = "Density") +
+  theme_minimal()
+
+print(plt_density)
 ```
 
