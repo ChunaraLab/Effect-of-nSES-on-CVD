@@ -221,14 +221,183 @@ significant_mediat <- report_df %>%
   filter(b1_pvalue <= 0.05,
          b2_pvalue <= 0.05,
          b4_pvalue <= 0.05) %>%
-  mutate(ADE = b3,
-         ACME = b2*b3,
-         Total_effect = b1) %>%
-  select(-c(5:12))
+  rename(ADE = b3,
+         ADE_ci_lwr = b3_ci_lwr,
+         ADE_ci_upr = b3_ci_upr,
+         ACME = b2_b3,
+         ACME_ci_lwr = b2_b3_ci_lwr,
+         ACME_ci_upr = b2_b3_ci_upr,
+         Total_effect = b1,
+         Total_effect_ci_lwr = b1_ci_lwr,
+         Total_effect_ci_upr = b1_ci_upr) %>%
+  select(1:4,5,7,8,13,15,16,21:23)
 ```
 
 ```{r}
 write.csv(significant_mediat, "../results/mediation_result/significant_mediat.csv", row.names = FALSE)
-write.csv(report_df, "../results/mediation_result/mediation_result_complete.csv", row.names = FALSE)
+write.csv(report_df, "../results/mediation_result/mediation_result_ci.csv", row.names = FALSE)
 ```
 
+
+
+
+### bootstrap to obtain ci
+```{r}
+report_df <- data.frame(
+  Data = character(),
+  Y = character(),
+  X = character(),
+  mediator = character(),
+  b1 = numeric(),
+  b1_pvalue = numeric(),
+  b1_ci_lwr = numeric(),
+  b1_ci_upr = numeric(),
+  b2 = numeric(),
+  b2_pvalue = numeric(),
+  b2_ci_lwr = numeric(),
+  b2_ci_upr = numeric(),
+  b3 = numeric(),
+  b3_pvalue = numeric(),
+  b3_ci_lwr = numeric(),
+  b3_ci_upr = numeric(),
+  b4 = numeric(),
+  b4_pvalue = numeric(),
+  b4_ci_lwr = numeric(),
+  b4_ci_upr = numeric(),
+  b2_b3 = numeric(),
+  b2_b3_ci_lwr = numeric(),
+  b2_b3_ci_upr = numeric(),
+  stringsAsFactors = FALSE
+)
+
+n_boot <- 100
+
+for (combo in all_combos) {
+  
+  # get values
+  data_name = combo$data
+  data <- named_datasets[[data_name]]
+  Y <- combo$Y
+  X <- combo$X
+  M <- combo$M
+  Z <- combo$covariates_final
+  
+  # generate formula
+  ## formula for generating weights
+  formula_ps_no_str <- paste(X, "~ 1")
+  formula_ps_no <- as.formula(formula_ps_no_str)
+  formula_ps_str <- paste(X, "~ ", M, "+" ,paste(Z, collapse=" + "))
+  formula_ps <- as.formula(formula_ps_str)
+  ## formula for mediation test
+  formula_X_to_Y <- paste(Y, "~",X, "+", paste(Z, collapse=" + "))
+  formula_X_to_Y <- as.formula(formula_X_to_Y)
+  formula_X_to_M <- paste(M, "~", X)
+  formula_X_to_M <- as.formula(formula_X_to_M)
+  formula_XM_to_Y <- paste(Y, "~",X, "+", M, "+", paste(Z, collapse=" + "))
+  formula_XM_to_Y <- as.formula(formula_XM_to_Y)
+  
+  
+  # estimate weights
+  
+  denominator = conditional_densities(data, X, formula_ps_no,formula_ps, use_confounders=T)
+  numerator = conditional_densities(data,X, formula_ps_no,formula_ps, use_confounders=F)
+  propensity_density = numerator / denominator
+  threshold <- quantile(propensity_density, 0.99)
+  data <- data[propensity_density <= threshold, ]
+  propensity_density <- propensity_density[propensity_density <= threshold]
+  
+  # run the 3 models
+  ## Y ~ X + Z
+  mod_X_to_Y <- glm(formula = formula_X_to_Y, data = data, family = binomial(), weights = propensity_density)
+  summary_X_to_Y <- summary(mod_X_to_Y)
+  coef_X_to_Y <- summary_X_to_Y$coefficients
+  ## M ~ X
+  mod_X_to_M <- glm(formula = formula_X_to_M, data = data, weights = propensity_density)
+  summary_X_to_M <- summary(mod_X_to_M)
+  coef_X_to_M <- summary_X_to_M$coefficients
+  ## Y ~ X + M +Z
+  mod_XM_to_Y <- glm(formula = formula_XM_to_Y, data = data, family = binomial(), weights = propensity_density)
+  summary_XM_to_Y <- summary(mod_XM_to_Y)
+  coef_XM_to_Y <- summary_XM_to_Y$coefficients
+  
+  
+  # store model result
+  b1 <- round(coef_X_to_Y[X, "Estimate"], digits = 5)
+  b1_pvalue <- round(coef_X_to_Y[X, "Pr(>|z|)"], digits = 5)
+  b2 <- round(coef_X_to_M[X, "Estimate"], digits = 5)
+  b2_pvalue <- round(coef_X_to_M[X, "Pr(>|t|)"], digits = 5)
+  b3 <- round(coef_XM_to_Y[X, "Estimate"], digits = 5)
+  b3_pvalue <- round(coef_XM_to_Y[X, "Pr(>|z|)"], digits = 5)
+  b4 <- round(coef_XM_to_Y[M, "Estimate"], digits = 5)
+  b4_pvalue <- round(coef_XM_to_Y[M, "Pr(>|z|)"], digits = 5)
+  b2_b3 <- round(b2 * b3, digits = 5)
+  
+  # Bootstrap to get CIs
+  bootstrap_results <- matrix(NA, n_boot, 5)
+  
+  set.seed(123) 
+  
+  for (i in 1:n_boot) {
+    # Resample with replacement
+    indices <- sample(1:nrow(data), replace = TRUE)
+    boot_data <- data[indices, ]
+    boot_weights <- propensity_density[indices]
+    
+    # Refit the models on the bootstrap sample
+    boot_mod_X_to_Y <- glm(formula = formula_X_to_Y, data = boot_data, family = binomial(), weights = boot_weights)
+    boot_mod_X_to_M <- glm(formula = formula_X_to_M, data = boot_data, weights = boot_weights)
+    boot_mod_XM_to_Y <- glm(formula = formula_XM_to_Y, data = boot_data, family = binomial(), weights = boot_weights)
+    
+    # Extract coefficients
+    boot_coef_X_to_Y <- coef(boot_mod_X_to_Y)
+    boot_coef_X_to_M <- coef(boot_mod_X_to_M)
+    boot_coef_XM_to_Y <- coef(boot_mod_XM_to_Y)
+    
+    # Store bootstrap coefficients
+    bootstrap_results[i, 1] <- boot_coef_X_to_Y[X]
+    bootstrap_results[i, 2] <- boot_coef_X_to_M[X]
+    bootstrap_results[i, 3] <- boot_coef_XM_to_Y[X]
+    bootstrap_results[i, 4] <- boot_coef_XM_to_Y[M]
+    bootstrap_results[i, 5] <- boot_coef_X_to_M[X] * boot_coef_XM_to_Y[X]
+  }
+  
+  # Calculate confidence intervals
+  ci_b1 <- quantile(bootstrap_results[, 1], c(0.025, 0.975))
+  ci_b2 <- quantile(bootstrap_results[, 2], c(0.025, 0.975))
+  ci_b3 <- quantile(bootstrap_results[, 3], c(0.025, 0.975))
+  ci_b4 <- quantile(bootstrap_results[, 4], c(0.025, 0.975))
+  ci_b2_b3 <- quantile(bootstrap_results[, 5], c(0.025, 0.975))
+  
+  
+  # store final result
+  new_df <- data.frame(
+    Data = data_name,
+    Y = Y,
+    X = X,
+    mediator = M,
+    b1 = b1,
+    b1_pvalue = b1_pvalue,
+    b1_ci_lwr = ci_b1[1],
+    b1_ci_upr = ci_b1[2],
+    b2 = b2,
+    b2_pvalue = b2_pvalue,
+    b2_ci_lwr = ci_b2[1],
+    b2_ci_upr = ci_b2[2],
+    b3 = b3,
+    b3_pvalue = b3_pvalue,
+    b3_ci_lwr = ci_b3[1],
+    b3_ci_upr = ci_b3[2],
+    b4 = b4,
+    b4_pvalue = b4_pvalue,
+    b4_ci_lwr = ci_b4[1],
+    b4_ci_upr = ci_b4[2],
+    b2_b3 = b2_b3,
+    b2_b3_ci_lwr = ci_b2_b3[1],
+    b2_b3_ci_upr = ci_b2_b3[2],
+    stringsAsFactors = FALSE
+  )
+
+  report_df <- rbind(report_df, new_df)
+
+}
+```
