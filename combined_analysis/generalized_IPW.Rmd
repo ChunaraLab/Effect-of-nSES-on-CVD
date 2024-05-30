@@ -122,17 +122,26 @@ conditional_densities <- function(data, treatment, formula_ps_no_con, formula_ps
 ```{r, warning=FALSE}
 report_df <- data.frame(
   Data = character(),
-  Y = character(),
-  X = character(),
-  moderator = character(),
+  Y = numeric(),
+  X = numeric(),
   intercept = numeric(),
   intercept_pvalue = numeric(),
   X_coef = numeric(),
   X_pvalue = numeric(),
+  X_ci_lwr = numeric(),
+  X_ci_upr = numeric(),
+  moderator = numeric(),
+  moderator_coef = numeric(),
+  moderator_pvalue = numeric(),
+  moderator_ci_lwr = numeric(),
+  moderator_ci_upr = numeric(),
   interaction_coef = numeric(),
   interaction_pvalue = numeric(),
+  interact_ci_lwr = numeric(),
+  interact_ci_upr = numeric(),
   stringsAsFactors = FALSE 
 )
+
 
 for (combo in all_combos) {
   
@@ -178,6 +187,7 @@ for (combo in all_combos) {
     moderator <- NA
   }
   
+  
   # estimate
   
   denominator = conditional_densities(data, X, formula_ps_no,formula_ps, use_confounders=T)
@@ -194,26 +204,40 @@ for (combo in all_combos) {
   # remove duplicates later
 
   coefficients <- summary_model$coefficients
+  ci <- confint(outcome_mod)
+  
+  intercept <- round(coefficients["(Intercept)", "Estimate"], digits = 5)  ## common parts
+  intercept_pvalue <- round(coefficients["(Intercept)", "Pr(>|z|)"], digits = 5)
+  
+  X_coef <- round(coefficients[X, "Estimate"], digits = 5)
+  X_pvalue <- round(coefficients[X, "Pr(>|z|)"], digits = 5)
+  X_ci_lwr <- round(ci[X,"2.5 %"],digits = 5)
+  X_ci_upr <- round(ci[X,"97.5 %"],digits = 5)
 
   if(is.na(moderator)) {
-    intercept <- round(coefficients["(Intercept)", "Estimate"], digits = 5)
-    intercept_pvalue <- round(coefficients["(Intercept)", "Pr(>|z|)"], digits = 5)
     
-    X_coef <- round(coefficients[X, "Estimate"], digits = 5)
-    X_pvalue <- round(coefficients[X, "Pr(>|z|)"], digits = 5)
+    moderator_coef <- NA
+    moderator_pvalue <- NA
+    moderator_ci_lwr <- NA
+    moderator_ci_upr <- NA
     
     interaction_coef <- NA
     interaction_pvalue <- NA
-  } else{
-    intercept <- round(coefficients["(Intercept)", "Estimate"], digits = 5)
-    intercept_pvalue <- round(coefficients["(Intercept)", "Pr(>|z|)"], digits = 5)
+    interact_ci_lwr <- NA
+    interact_ci_upr <- NA
     
-    X_coef <- round(coefficients[X, "Estimate"], digits = 5)
-    X_pvalue <- round(coefficients[X, "Pr(>|z|)"], digits = 5)
+  } else{
+    
+    moderator_coef <- round(coefficients[moderator, "Estimate"], digits = 5)
+    moderator_pvalue <- round(coefficients[moderator, "Pr(>|z|)"], digits = 5)
+    moderator_ci_lwr <- round(ci[moderator,"2.5 %"],digits = 5)
+    moderator_ci_upr <- round(ci[moderator,"97.5 %"],digits = 5)
       
-    last_term_name <- tail(rownames(coefficients), 1)
-    interaction_coef <- round(coefficients[last_term_name, "Estimate"], digits = 5)
-    interaction_pvalue <- round(coefficients[last_term_name, "Pr(>|z|)"], digits = 5)
+    interact_term_name <- tail(rownames(coefficients), 1)
+    interaction_coef <- round(coefficients[interact_term_name, "Estimate"], digits = 5)
+    interaction_pvalue <- round(coefficients[interact_term_name, "Pr(>|z|)"], digits = 5)
+    interact_ci_lwr <- round(ci[interact_term_name,"2.5 %"],digits = 5)
+    interact_ci_upr <- round(ci[interact_term_name,"97.5 %"],digits = 5)
   }
   
   new_df <- data.frame(
@@ -222,11 +246,19 @@ for (combo in all_combos) {
               X = X,
               intercept = intercept,
               intercept_pvalue = intercept_pvalue,
-              moderator = moderator,
               X_coef = X_coef,
               X_pvalue = X_pvalue,
+              X_ci_lwr = X_ci_lwr,
+              X_ci_upr = X_ci_upr,
+              moderator = moderator,
+              moderator_coef = moderator_coef,
+              moderator_pvalue = moderator_pvalue,
+              moderator_ci_lwr = moderator_ci_lwr,
+              moderator_ci_upr = moderator_ci_upr,
               interaction_coef = interaction_coef,
               interaction_pvalue = interaction_pvalue,
+              interact_ci_lwr = interact_ci_lwr,
+              interact_ci_upr = interact_ci_upr,
               stringsAsFactors = FALSE )
 
   report_df <- rbind(report_df, new_df)
@@ -249,8 +281,11 @@ ipw_mediate <- ipw_moderate
 ipw_mediate$mediator <- NA
 ipw_mediate$mediator_coef <- NA
 ipw_mediate$mediator_pvalue <- NA
+ipw_mediate$mediator_ci_lwr <- NA
+ipw_mediate$mediator_ci_upr <- NA
 
-ipw_mediate[1,"mediator"] <- "nutrition&PhysAct"
+# mesa nSES being mediated
+ipw_mediate[1,"mediator"] <- "nutrition&PhysAct"  
 ipw_mediate[5,"mediator"] <- "nutrition"
 ```
 
@@ -264,7 +299,7 @@ formula_ps = "nSES ~ 1 + nRS + nFavFood + nPhysFac + \
                 sbp + Diabetes + hdl + totchol + age + \
                 site + race"
 
-formula_outcome_logit = 'cvd_10y_noHF ~ 1 + nSES + nutrition'
+formula_outcome_logit = 'cvd_10y_HF ~ 1 + nSES + nutrition + PhysAct'
 ```
 
 Step 1: estimate propensity density
@@ -283,35 +318,42 @@ Step 2: Outcome model
 ```{r}
 modelA <- glm(formula = formula_outcome_logit, data = data, family = binomial(), weights = propensity_density)
 summary(modelA)
+confint(modelA)
 ```
 ```{r}
 ipw_mediate[1,"intercept"] <- -1.29558
 ipw_mediate[1,"X_coef"] <- 0.12714
 ipw_mediate[1,"X_pvalue"] <- 0.04996
-ipw_mediate[1,"mediator_coef"] <- "-0.34408;-0.15921"
-ipw_mediate[1,"mediator_pvalue"] <- "0.00319;0.01471"
+ipw_mediate[1,"X_ci_lwr"] <- 0.001158415
+ipw_mediate[1,"X_ci_upr"] <- 0.2555166
+ipw_mediate[1,"mediator_coef"] <- "-0.34408; -0.15921"
+ipw_mediate[1,"mediator_pvalue"] <- "0.00319; 0.01471"
+ipw_mediate[1,"mediator_ci_lwr"] <- "-0.575831300; -0.286160205"
+ipw_mediate[1,"mediator_ci_upr"] <- "-0.1180496; -0.0301479"
 
 ipw_mediate[5,"intercept"] <- -1.7693
 ipw_mediate[5,"X_coef"] <- 0.2386
 ipw_mediate[5,"X_pvalue"] <- 0.000937
+ipw_mediate[5,"X_ci_lwr"] <- 0.09896727
+ipw_mediate[5,"X_ci_upr"] <- 0.3817504
 ipw_mediate[5,"mediator_coef"] <- -0.4484
 ipw_mediate[5,"mediator_pvalue"] <- 0.000552
+ipw_mediate[5,"mediator_ci_lwr"] <- -0.70724600
+ipw_mediate[5,"mediator_ci_upr"] <- -0.1977654
 ```
 
 
 ```{r}
-write.csv(ipw_mediate, "../results/generalized_IPW/ipw_final_0528.csv", row.names = FALSE)
+write.csv(ipw_mediate, "../results/generalized_IPW/ipw_final_0530.csv", row.names = FALSE)
 ```
 
 
 ```{r}
-ipw_significant <- read.csv("/Users/cxt/Documents/research/CVD/Effect-of-nSES-on-CVD/results/generalized_IPW/ipw_final_0528.csv") %>%
+ipw_significant <- read.csv("/Users/cxt/Documents/research/CVD/Effect-of-nSES-on-CVD/results/generalized_IPW/ipw_final_0530.csv") %>%
   filter(X_pvalue <= 0.05) %>%
-  filter(Data != "mesa_bla") %>%
-  select(-c(4,5)) %>%
-  select(1,2,3,5,6,4,7:11)
+  filter(Data != "mesa_bla") 
 
-write.csv(ipw_significant, "../results/generalized_IPW/ipw_significant_0529.csv", row.names = FALSE)
+write.csv(ipw_significant, "../results/generalized_IPW/ipw_significant_0530.csv", row.names = FALSE)
 ```
 
 
