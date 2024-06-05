@@ -23,6 +23,7 @@ library(dplyr)
 library(stats) # handle normal distribution calculations
 library(splines) # using splines
 library(mgcv)
+library(DescTools) # calculate mode
 ```
 
 ### data
@@ -296,7 +297,7 @@ formula_ps_no = "nSES ~ 1"
 
 formula_ps = "nSES ~ 1 + nRS + nFavFood + nPhysFac + \
                 FamIncome + nutrition + PhysAct + currentSmoker + alc + \
-                sbp + Diabetes + hdl + totchol + age + \
+                sbp + Diabetes + hdl + totchol + age + gender +\
                 site + race"
 
 formula_outcome_logit = 'cvd_10y_HF ~ 1 + nSES + nutrition + PhysAct'
@@ -315,11 +316,12 @@ propensity_density <- propensity_density[propensity_density <= threshold]
 ```
 
 Step 2: Outcome model
-```{r}
+```{r, warning=FALSE}
 modelA <- glm(formula = formula_outcome_logit, data = data, family = binomial(), weights = propensity_density)
 summary(modelA)
 confint(modelA)
 ```
+
 ```{r}
 ipw_mediate[1,"intercept"] <- -1.29558
 ipw_mediate[1,"X_coef"] <- 0.12714
@@ -519,7 +521,7 @@ for (i in 1:nrow(plot_ipw)) {
 ```
 
 
-### plot: X range +- 2sd
+#### plot: X range +- 2sd
 ```{r}
 for (i in 1:nrow(plot_ipw)) {
   print(i)
@@ -725,3 +727,178 @@ plt_density <- ggplot(test_dat, aes(x = !!sym("nSES"), fill = PhysAct, color = P
 print(plt_density)
 ```
 
+
+
+## Manually plot
+
+MESA nSES
+```{r, warning=FALSE}
+data <- mesa_std
+Y <- "cvd_10y_HF"
+X <- "nSES"
+
+# generate formula 
+formula_ps_no <- as.formula("nSES ~ 1")
+formula_ps <- as.formula("nSES ~ nPhysFac+nFavFood+nRS+\
+                         FamIncome+nutrition+PhysAct+currentSmoker+alc+\
+                         age+Diabetes+hdl+totchol+sbp+\
+                         race+site")
+formula_outcome <- as.formula("cvd_10y_HF ~ nSES + nutrition + PhysAct")
+  
+# fit model
+denominator = conditional_densities(data, X, formula_ps_no,formula_ps, use_confounders=T)
+numerator = conditional_densities(data,X, formula_ps_no,formula_ps, use_confounders=F)
+propensity_density = numerator / denominator
+threshold <- quantile(propensity_density, 0.99)
+data <- data[propensity_density <= threshold, ]    
+propensity_density <- propensity_density[propensity_density <= threshold]
+outcome_mod <- glm(formula = formula_outcome, data = data, family = binomial(), weights = propensity_density)
+    
+# Predicted probabilities and plotting
+## generate pred data
+pred_data <- data.frame(seq(from = mean(data[[X]])-2*sd(data[[X]]), 
+                                to = mean(data[[X]])+2*sd(data[[X]]), by = 0.1))
+names(pred_data) <- X
+pred_data$nutrition <- Mode(mesa_std$nutrition)
+pred_data$PhysAct <- Mode(mesa_std$PhysAct)
+
+preds <- predict(outcome_mod, pred_data,type = "response", se.fit = TRUE)
+se <- preds$se.fit
+pred_data$fit <- preds$fit
+pred_data$lwr <- preds$fit - 1.96 * se
+pred_data$upr <- preds$fit + 1.96 * se
+
+plt1 <- ggplot(pred_data, aes(x = !!sym(X))) +
+  geom_ribbon(aes(ymin = lwr, ymax = upr), fill = "blue", alpha = 0.2) +
+  geom_line(aes(y = fit), color = "blue") +
+  geom_hline(yintercept = 0, color = "black") +
+  labs(x = X, y = "Predicted Probabilities of Experiencing CVD") +
+  theme_minimal() +
+  theme(
+        axis.title.x = element_text(size = 14),  # Increase x-axis label size
+        axis.title.y = element_text(size = 14)   # Increase y-axis label size
+      )
+
+ggsave("mesa_nses.png", plot = plt1,
+           path = "../results/generalized_IPW/prediction_curve_final",
+           width = 8, height = 6, dpi = 300)
+```
+
+JHS nSES
+```{r}
+data <- jhs_std
+Y <- "cvd_10y_HF"
+X <- "nSES"
+
+# generate formula 
+formula_ps_no <- as.formula("nSES ~ 1")
+formula_ps <- as.formula("nSES ~ nPhysFac+nFavFood+nRS+\
+                         FamIncome+nutrition+PhysAct+currentSmoker+alc+\
+                         age+gender+Diabetes+hdl+totchol+sbp")
+formula_outcome <- as.formula("cvd_10y_HF ~ nSES + PhysAct + nSES:PhysAct")
+  
+# fit model
+denominator = conditional_densities(data, X, formula_ps_no,formula_ps, use_confounders=T)
+numerator = conditional_densities(data,X, formula_ps_no,formula_ps, use_confounders=F)
+propensity_density = numerator / denominator
+threshold <- quantile(propensity_density, 0.99)
+data <- data[propensity_density <= threshold, ]    
+propensity_density <- propensity_density[propensity_density <= threshold]
+outcome_mod <- glm(formula = formula_outcome, data = data, family = binomial(), weights = propensity_density)
+    
+# Predicted probabilities and plotting
+## generate pred data
+stats <- data %>%
+      group_by(PhysAct) %>%
+      summarize(mean_X = mean(!!sym(X), na.rm = TRUE), 
+                sd_X = sd(!!sym(X), na.rm = TRUE))
+    
+# Generate prediction data
+pred_data <- do.call(rbind, lapply(1:3, function(level) {
+  mean_X <- stats$mean_X[stats$PhysAct == level]
+  sd_X <- stats$sd_X[stats$PhysAct == level]
+  X_seq <- seq(from = mean_X - 2 * sd_X, to = mean_X + 2 * sd_X, by = 0.1)
+  data.frame(X = X_seq, PhysAct = rep(level, length(X_seq)))
+    }))
+    
+# Set column names
+names(pred_data) <- c(X, "PhysAct")
+    
+# Get predictions
+preds <- predict(outcome_mod, pred_data, type = "response", se.fit = TRUE)
+se <- preds$se.fit
+pred_data$fit <- preds$fit
+pred_data$lwr <- preds$fit - 1.96 * se
+pred_data$upr <- preds$fit + 1.96 * se
+    
+# Plot
+plt2 <- ggplot(pred_data, aes(x = !!sym(X), y = fit, 
+                                 group = factor(PhysAct, levels = c(1, 2, 3)),  
+                                 color = factor(PhysAct))) +
+      geom_line() +
+      geom_ribbon(aes(ymin = lwr, ymax = upr), alpha = 0.2) +
+      geom_hline(yintercept = 0, color = "black") +
+      scale_color_manual(values = c("blue", "red", "green"), 
+                         labels = c("Poor", "Intermediate", "Ideal"),
+                         name = "Physical Activity") +
+      labs(x = X, y = "Predicted Probabilities of Experiencing CVD") +
+  theme_minimal() +
+  theme(
+        axis.title.x = element_text(size = 14),  # Increase x-axis label size
+        axis.title.y = element_text(size = 14)   # Increase y-axis label size
+      )
+ggsave("jhs_nses.png", plot = plt2,
+           path = "../results/generalized_IPW/prediction_curve_final",
+           width = 8, height = 6, dpi = 300)
+```
+
+
+JHS nRS
+```{r, warning=FALSE}
+data <- jhs_std
+Y <- "cvd_10y_HF"
+X <- "nRS"
+
+# generate formula 
+formula_ps_no <- as.formula("nRS ~ 1")
+formula_ps <- as.formula("nRS ~ nSES+nPhysFac+nFavFood+\
+                         FamIncome+nutrition+PhysAct+currentSmoker+alc+\
+                         age+Diabetes+hdl+totchol+sbp")
+formula_outcome <- as.formula("cvd_10y_HF ~ nRS")
+  
+# fit model
+denominator = conditional_densities(data, X, formula_ps_no,formula_ps, use_confounders=T)
+numerator = conditional_densities(data,X, formula_ps_no,formula_ps, use_confounders=F)
+propensity_density = numerator / denominator
+threshold <- quantile(propensity_density, 0.99)
+data <- data[propensity_density <= threshold, ]    
+propensity_density <- propensity_density[propensity_density <= threshold]
+outcome_mod <- glm(formula = formula_outcome, data = data, family = binomial(), weights = propensity_density)
+    
+# Predicted probabilities and plotting
+## generate pred data
+pred_data <- data.frame(seq(from = mean(data[[X]])-2*sd(data[[X]]), 
+                                to = mean(data[[X]])+2*sd(data[[X]]), by = 0.1))
+names(pred_data) <- X
+
+preds <- predict(outcome_mod, pred_data,type = "response", se.fit = TRUE)
+se <- preds$se.fit
+pred_data$fit <- preds$fit
+pred_data$lwr <- preds$fit - 1.96 * se
+pred_data$upr <- preds$fit + 1.96 * se
+
+plt3 <- ggplot(pred_data, aes(x = !!sym(X))) +
+  geom_ribbon(aes(ymin = lwr, ymax = upr), fill = "blue", alpha = 0.2) +
+  geom_line(aes(y = fit), color = "blue") +
+  geom_hline(yintercept = 0, color = "black") +
+  labs(x = X, y = "Predicted Probabilities of Experiencing CVD") +
+  theme_minimal() +
+  theme(
+        axis.title.x = element_text(size = 14),  # Increase x-axis label size
+        axis.title.y = element_text(size = 14)   # Increase y-axis label size
+      )
+
+ggsave("jhs_nrs.png", plot = plt3,
+           path = "../results/generalized_IPW/prediction_curve_final",
+           width = 8, height = 6, dpi = 300)
+```
