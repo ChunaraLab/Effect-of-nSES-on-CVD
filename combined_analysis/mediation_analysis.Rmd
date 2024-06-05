@@ -215,29 +215,6 @@ for (combo in all_combos) {
 
 ```
 
-```{r}
-# significant mediator
-significant_mediat <- report_df %>%
-  filter(b1_pvalue <= 0.05,
-         b2_pvalue <= 0.05,
-         b4_pvalue <= 0.05) %>%
-  rename(ADE = b3,
-         ADE_ci_lwr = b3_ci_lwr,
-         ADE_ci_upr = b3_ci_upr,
-         ACME = b2_b3,
-         ACME_ci_lwr = b2_b3_ci_lwr,
-         ACME_ci_upr = b2_b3_ci_upr,
-         Total_effect = b1,
-         Total_effect_ci_lwr = b1_ci_lwr,
-         Total_effect_ci_upr = b1_ci_upr) %>%
-  select(1:4,5,7,8,13,15,16,21:23)
-```
-
-```{r}
-write.csv(significant_mediat, "../results/mediation_result/significant_mediat.csv", row.names = FALSE)
-write.csv(report_df, "../results/mediation_result/mediation_result_ci.csv", row.names = FALSE)
-```
-
 
 
 
@@ -264,9 +241,9 @@ report_df <- data.frame(
   b4_pvalue = numeric(),
   b4_ci_lwr = numeric(),
   b4_ci_upr = numeric(),
-  b2_b3 = numeric(),
-  b2_b3_ci_lwr = numeric(),
-  b2_b3_ci_upr = numeric(),
+  b2_b4 = numeric(),
+  b2_b4_ci_lwr = numeric(),
+  b2_b4_ci_upr = numeric(),
   stringsAsFactors = FALSE
 )
 
@@ -330,7 +307,7 @@ for (combo in all_combos) {
   b3_pvalue <- round(coef_XM_to_Y[X, "Pr(>|z|)"], digits = 5)
   b4 <- round(coef_XM_to_Y[M, "Estimate"], digits = 5)
   b4_pvalue <- round(coef_XM_to_Y[M, "Pr(>|z|)"], digits = 5)
-  b2_b3 <- round(b2 * b3, digits = 5)
+  b2_b4 <- round(b2 * b4, digits = 5)
   
   # Bootstrap to get CIs
   bootstrap_results <- matrix(NA, n_boot, 5)
@@ -358,7 +335,7 @@ for (combo in all_combos) {
     bootstrap_results[i, 2] <- boot_coef_X_to_M[X]
     bootstrap_results[i, 3] <- boot_coef_XM_to_Y[X]
     bootstrap_results[i, 4] <- boot_coef_XM_to_Y[M]
-    bootstrap_results[i, 5] <- boot_coef_X_to_M[X] * boot_coef_XM_to_Y[X]
+    bootstrap_results[i, 5] <- boot_coef_X_to_M[X] * boot_coef_XM_to_Y[M]
   }
   
   # Calculate confidence intervals
@@ -366,7 +343,7 @@ for (combo in all_combos) {
   ci_b2 <- quantile(bootstrap_results[, 2], c(0.025, 0.975))
   ci_b3 <- quantile(bootstrap_results[, 3], c(0.025, 0.975))
   ci_b4 <- quantile(bootstrap_results[, 4], c(0.025, 0.975))
-  ci_b2_b3 <- quantile(bootstrap_results[, 5], c(0.025, 0.975))
+  ci_b2_b4 <- quantile(bootstrap_results[, 5], c(0.025, 0.975))
   
   
   # store final result
@@ -391,9 +368,9 @@ for (combo in all_combos) {
     b4_pvalue = b4_pvalue,
     b4_ci_lwr = ci_b4[1],
     b4_ci_upr = ci_b4[2],
-    b2_b3 = b2_b3,
-    b2_b3_ci_lwr = ci_b2_b3[1],
-    b2_b3_ci_upr = ci_b2_b3[2],
+    b2_b4 = b2_b4,
+    b2_b4_ci_lwr = ci_b2_b4[1],
+    b2_b4_ci_upr = ci_b2_b4[2],
     stringsAsFactors = FALSE
   )
 
@@ -401,3 +378,30 @@ for (combo in all_combos) {
 
 }
 ```
+
+
+```{r}
+# significant mediator
+significant_mediat <- report_df %>%
+  filter(b1_pvalue <= 0.05,
+         b2_pvalue <= 0.05,
+         b4_pvalue <= 0.05) %>%
+  rename(ADE = b3,
+         ADE_ci_lwr = b3_ci_lwr,
+         ADE_ci_upr = b3_ci_upr,
+         ACME = b2_b4,
+         ACME_ci_lwr = b2_b4_ci_lwr,
+         ACME_ci_upr = b2_b4_ci_upr,
+         Total_effect = b1,
+         Total_effect_ci_lwr = b1_ci_lwr,
+         Total_effect_ci_upr = b1_ci_upr) %>%
+  select(1:4,5,7,8,13,15,16,21:23)
+```
+
+```{r}
+write.csv(significant_mediat, "../results/mediation_result/significant_mediat.csv", row.names = FALSE)
+write.csv(report_df, "../results/mediation_result/mediation_result_ci.csv", row.names = FALSE)
+```
+
+
+
