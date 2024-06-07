@@ -125,10 +125,10 @@ for (name in names(cate_all_summary_stats)) {
 
 ### logistic regression
 ```{r}
-dat <- jhs_nohf
+dat <- mesa_nohf
 
 # Extract the names of the predictors
-predictors <- names(jhs_hf)[-1]  # exclude outcome column
+predictors <- names(mesa_nohf)[-1]  # exclude outcome column
 
 # Initialize an empty data frame to store the results
 results <- data.frame(Predictor = character(), Coefficient = numeric(), P_value = numeric(), stringsAsFactors = FALSE)
@@ -159,4 +159,10 @@ site
 ```{r}
 summary(glm(cvd_10y_HF ~ factor(site), data = mesa_hf, family = binomial()))
 summary(glm(cvd_10y_noHF ~ factor(site), data = mesa_nohf, family = binomial()))
+```
+
+race
+```{r}
+summary(glm(cvd_10y_HF ~ factor(race), data = mesa_hf, family = binomial()))
+summary(glm(cvd_10y_noHF ~ factor(race), data = mesa_nohf, family = binomial()))
 ```
