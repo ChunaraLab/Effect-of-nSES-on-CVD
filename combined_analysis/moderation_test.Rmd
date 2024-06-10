@@ -147,7 +147,14 @@ report_df <- data.frame(
   Y = character(),
   X = character(),
   moderator = character(),
-  other = character(),
+  X_coef = numeric(),
+  X_pvalue = numeric(),
+  X_ci_lwr = numeric(),
+  X_ci_upr = numeric(),
+  moderator_coef = numeric(),
+  moderator_pvalue = numeric(),
+  moderator_ci_lwr = numeric(),
+  moderator_ci_upr = numeric(),
   interaction_coef = numeric(),
   interaction_pvalue = numeric(),
   interaction_ci_lwr = numeric(),
@@ -176,34 +183,61 @@ for (combo in all_combos) {
 
   # store the result
   coefficients <- summary_model$coefficients
-  last_term <- coefficients[nrow(coefficients), ]
-  last_coefficient <- last_term["Estimate"]
-  last_pvalue <- last_term["Pr(>|z|)"]
-  last_term_name <- tail(names(coef(interact_mod)), 1)
-  last_term_ci <- confint(interact_mod, parm = last_term_name)
-  interaction_ci_lwr <- last_term_ci["2.5 %"]
-  interaction_ci_upr <- last_term_ci["97.5 %"]
+  
+  # X term
+  X_term <- coefficients[which(rownames(coefficients) == X), ]
+  X_coefficient <- X_term["Estimate"]
+  X_pvalue <- X_term["Pr(>|z|)"]
+  X_ci <- confint(interact_mod, parm = X)
+  X_ci_lwr <- X_ci["2.5 %"]
+  X_ci_upr <- X_ci["97.5 %"]
+
+  # Moderator term
+  moderator_term <- coefficients[which(rownames(coefficients) == M), ]
+  moderator_coefficient <- moderator_term["Estimate"]
+  moderator_pvalue <- moderator_term["Pr(>|z|)"]
+  moderator_ci <- confint(interact_mod, parm = M)
+  moderator_ci_lwr <- moderator_ci["2.5 %"]
+  moderator_ci_upr <- moderator_ci["97.5 %"]
+
+  # Interaction term
+  interaction_term <- coefficients[nrow(coefficients), ]
+  interaction_coefficient <- interaction_term["Estimate"]
+  interaction_pvalue <- interaction_term["Pr(>|z|)"]
+  interaction_term_name <- tail(names(coef(interact_mod)), 1)
+  interaction_ci <- confint(interact_mod, parm = interaction_term_name)
+  interaction_ci_lwr <- interaction_ci["2.5 %"]
+  interaction_ci_upr <- interaction_ci["97.5 %"]
   
   new_df <- data.frame(
               Data = data_name,
               Y = Y,
               X = X,
               moderator = M,
-              interaction_coef = last_coefficient,
-              interaction_pvalue = last_pvalue,
+              X_coef = X_coefficient,
+              X_pvalue = X_pvalue,
+              X_ci_lwr = X_ci_lwr,
+              X_ci_upr = X_ci_upr,
+              moderator_coef = moderator_coefficient,
+              moderator_pvalue = moderator_pvalue,
+              moderator_ci_lwr = moderator_ci_lwr,
+              moderator_ci_upr = moderator_ci_upr,
+              interaction_coef = interaction_coefficient,
+              interaction_pvalue = interaction_pvalue,
               interaction_ci_lwr = interaction_ci_lwr,
               interaction_ci_upr = interaction_ci_upr,
-              significant = ifelse(last_pvalue <= 0.05, "Y", "N"),
+              significant = ifelse(interaction_pvalue <= 0.05, "Y", "N"),
               stringsAsFactors = FALSE  # Ensure that text columns are not converted to factors
             )
 
   report_df <- rbind(report_df, new_df)
-
 }
+
 ```
 
+
 ```{r}
-write.csv(report_df, "../results/moderation_result/moderation_result_0529.csv", row.names = FALSE, quote = TRUE, sep = ",", fileEncoding = "UTF-8")
+write.csv(report_df, "../results/moderation_result/moderation_result_0610.csv", row.names = FALSE, quote = TRUE, sep = ",", fileEncoding = "UTF-8")
 ```
 
 ```{r}
@@ -212,5 +246,5 @@ moderation_significant <- report_df %>%
   filter(Data != "mesa_bla") %>%
   select(-significant)
 
-write.csv(moderation_significant, "../results/moderation_result/moderation_significant_0529.csv", row.names = FALSE, quote = TRUE, sep = ",", fileEncoding = "UTF-8")
+write.csv(moderation_significant, "../results/moderation_result/moderation_significant_0610.csv", row.names = FALSE, quote = TRUE, sep = ",", fileEncoding = "UTF-8")
 ```
