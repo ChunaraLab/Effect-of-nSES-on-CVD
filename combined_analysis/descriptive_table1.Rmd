@@ -55,6 +55,15 @@ sum(jhs_raw$cvd_10y_noHF)
 sum(jhs_raw$cvd_10y_noHF==0)
 ```
 
+range 
+```{r}
+range(mesa_hf[mesa_hf$cvd_10y_HF == 1,]$nSES)
+range(mesa_hf[mesa_hf$cvd_10y_HF == 0,]$nSES)
+
+range(jhs_hf[jhs_hf$cvd_10y_HF == 1,]$nSES)
+range(jhs_hf[jhs_hf$cvd_10y_HF == 0,]$nSES)
+```
+
 ### descriptive stats by outcome
 
 ```{r}
@@ -125,10 +134,10 @@ for (name in names(cate_all_summary_stats)) {
 
 ### logistic regression
 ```{r}
-dat <- mesa_nohf
+dat <- mesa_hf
 
 # Extract the names of the predictors
-predictors <- names(mesa_nohf)[-1]  # exclude outcome column
+predictors <- names(mesa_hf)[-1]  # exclude outcome column
 
 # Initialize an empty data frame to store the results
 results <- data.frame(Predictor = character(), Coefficient = numeric(), P_value = numeric(), stringsAsFactors = FALSE)
@@ -136,7 +145,7 @@ results <- data.frame(Predictor = character(), Coefficient = numeric(), P_value 
 # Loop through each predictor and perform logistic regression
 for (pred in predictors) {
   
-  formula_text <- paste("cvd_10y_noHF ~", pred)
+  formula_text <- paste("cvd_10y_HF ~", pred)
   model <- glm(formula_text, data = dat, family = binomial())
   
   # Extract the coefficient and p-value for the predictor (not the intercept)
