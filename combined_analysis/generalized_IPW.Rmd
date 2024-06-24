@@ -775,15 +775,17 @@ plt1 <- ggplot(pred_data, aes(x = !!sym(X))) +
   labs(x = "Neighborhood Socioeconomic Status Level in MESA", y = "Predicted Probabilities of Experiencing CVD") +
   theme_minimal() +
   theme(
-        axis.title.x = element_text(size = 16),  
-        axis.title.y = element_text(size = 16)   
+        axis.title.x = element_text(size = 20),  
+    axis.title.y = element_text(size = 20), 
+    axis.text.x = element_text(size = 20),  
+    axis.text.y = element_text(size = 20)   
       )
 
 plt1
 
 ggsave("mesa_nses.png", plot = plt1,
            path = "../results/generalized_IPW/prediction_curve_final",
-           width = 8, height = 6, dpi = 300)
+           width = 10, height = 8, dpi = 300)
 
 ```
 
@@ -847,14 +849,16 @@ plt2 <- ggplot(pred_data, aes(x = !!sym(X), y = fit,
       labs(x = "Neighborhood Socioeconomic Status Level in JHS", y = "Predicted Probabilities of Experiencing CVD") +
   theme_minimal() +
   theme(
-        axis.title.x = element_text(size = 16),  
-        axis.title.y = element_text(size = 16), 
-        legend.text = element_text(size = 16)
+        axis.title.x = element_text(size = 20),  
+    axis.title.y = element_text(size = 20), 
+    axis.text.x = element_text(size = 20),  
+    axis.text.y = element_text(size = 20),
+        legend.text = element_text(size = 20)
       )
 plt2
 ggsave("jhs_nses.png", plot = plt2,
            path = "../results/generalized_IPW/prediction_curve_final",
-           width = 10, height = 6, dpi = 300)
+           width = 12, height = 8, dpi = 300)
 ```
 
 JHS nRS
@@ -898,13 +902,15 @@ plt3 <- ggplot(pred_data, aes(x = !!sym(X))) +
   labs(x = "Neighborhood Racial Segregation Level in JHS", y = "Predicted Probabilities of Experiencing CVD") +
   theme_minimal() +
   theme(
-        axis.title.x = element_text(size = 16),  # Increase x-axis label size
-        axis.title.y = element_text(size = 16)   # Increase y-axis label size
+        axis.title.x = element_text(size = 20),  
+    axis.title.y = element_text(size = 20), 
+    axis.text.x = element_text(size = 20),  
+    axis.text.y = element_text(size = 20)
       )
 
 ggsave("jhs_nrs.png", plot = plt3,
            path = "../results/generalized_IPW/prediction_curve_final",
-           width = 8, height = 6, dpi = 300)
+           width = 10, height = 8, dpi = 300)
 ```
 
 ## Check assumption
