@@ -15,7 +15,7 @@ This file is translated from the Generalized_IPW.ipynb file and expanded on the 
 ## Prep
 
 ### packages
-```{r, warning=FALSE}
+```{r, warning=FALSE, message=FALSE}
 library(readr)
 library(tidyr)
 library(ggplot2)
@@ -24,6 +24,8 @@ library(stats) # handle normal distribution calculations
 library(splines) # using splines
 library(mgcv)
 library(DescTools) # calculate mode
+library(tableone)
+library(cobalt)
 ```
 
 ### data
@@ -853,7 +855,8 @@ plt2 <- ggplot(pred_data, aes(x = !!sym(X), y = fit,
     axis.title.y = element_text(size = 20), 
     axis.text.x = element_text(size = 20),  
     axis.text.y = element_text(size = 20),
-        legend.text = element_text(size = 20)
+        legend.text = element_text(size = 20),
+    legend.title = element_text(size = 20) 
       )
 plt2
 ggsave("jhs_nses.png", plot = plt2,
@@ -915,17 +918,25 @@ ggsave("jhs_nrs.png", plot = plt3,
 
 ## Check assumption
 
+dichotomize the neighborhood exposure variables after weight calculation, to examine overlap and balance\\
+tutorial from https://ehsanx.github.io/psw/s3.html\\
+
+
 MESA nSES
 ```{r, warning=FALSE}
 data <- mesa_std
 Y <- "cvd_10y_HF"
 X <- "nSES"
+Z <- c("nPhysFac","nFavFood","nRS",
+       "FamIncome","nutrition","PhysAct","currentSmoker","alc",
+       "age","Diabetes","hdl","totchol","sbp","gender",
+       "race","site")
 
 # generate formula 
 formula_ps_no <- as.formula("nSES ~ 1")
 formula_ps <- as.formula("nSES ~ nPhysFac+nFavFood+nRS+\
                          FamIncome+nutrition+PhysAct+currentSmoker+alc+\
-                         age+Diabetes+hdl+totchol+sbp+\
+                         age+Diabetes+hdl+totchol+sbp+gender+\
                          race+site")
 formula_outcome <- as.formula("cvd_10y_HF ~ nSES + nutrition + PhysAct")
   
@@ -936,91 +947,121 @@ propensity_density = numerator / denominator
 threshold <- quantile(propensity_density, 0.99)
 data <- data[propensity_density <= threshold, ]    
 propensity_density <- propensity_density[propensity_density <= threshold]
-data$propensity_scores <- 1/propensity_density
 data$weights <- propensity_density
 
 
-# Plot the distribution of propensity scores
-ggplot(data, aes(x = propensity_scores)) +
-  geom_histogram(binwidth = 0.01, fill = "blue", color = "black", alpha = 0.7) +
-  labs(title = "Distribution of Propensity Scores",
-       x = "Propensity Score",
-       y = "Frequency") +
-  theme_minimal()
-
-```
-```{r}
-library(survey)
-design <- svydesign(ids = ~1, weights = ~weights, data = data)
-
-# Check balance before weighting
-balance_before <- svymean(~nPhysFac+nFavFood+nRS+FamIncome+nutrition+PhysAct+currentSmoker+alc+age+Diabetes+hdl+totchol+sbp+race+site, 
-                          design = svydesign(ids = ~1, data = data))
-
-# Check balance after weighting
-balance_after <- svymean(~nPhysFac+nFavFood+nRS+FamIncome+nutrition+PhysAct+currentSmoker+alc+age+Diabetes+hdl+totchol+sbp+race+site, 
-                         design = design)
-
-# Compare balance before and after weighting
-balance_check <- bind_rows(
-  tibble(
-    covariate = names(balance_before),
-    mean_before = as.numeric(balance_before),
-    mean_after = as.numeric(balance_after)
-  )
+smd_after <- bal.tab(
+  data[, Z], 
+  treat = "nSES", 
+  data =data,
+  weights = "weights",
+  un = TRUE
 )
 
-print(balance_check)
+# Plotting the SMDs before and after weighting
+plt <- love.plot(smd_after, 
+          threshold = 0.1,  # Preferred threshold for good balance
+          var.order = "alphabetical") +
+  labs(title = "Pearson correlation between the covariate and treatment before and after Weighting\
+  In MESA using n-SES as exposure",
+       subtitle = "Dashed line: PC = -0.1 and PC = 0.1 (preferred threshold)")
+
+ggsave("mesa_nses_balance.png", plot = plt,
+           path = "../results/generalized_IPW/check_balance",
+           width = 8, height = 6, dpi = 300)
 ```
 
 
+JHS nSES
 ```{r}
-library(WeightIt)
-library(cobalt)
-library(survey)
-
-# Simulate some example data
-set.seed(123)
-data <- mesa_std
+data <- jhs_std
 Y <- "cvd_10y_HF"
 X <- "nSES"
+Z <- c("nPhysFac","nFavFood","nRS",
+       "FamIncome","nutrition","PhysAct","currentSmoker","alc",
+       "age","Diabetes","hdl","totchol","sbp","gender")
 
-ps_model <- glm(nSES ~ nPhysFac + nFavFood + nRS + FamIncome + nutrition + PhysAct +
-                  currentSmoker + alc + age + Diabetes + hdl + totchol + sbp + race + site, 
-                data = data, family = gaussian)
+# generate formula 
+formula_ps_no <- as.formula("nSES ~ 1")
+formula_ps <- as.formula("nSES ~ nPhysFac+nFavFood+nRS+\
+                         FamIncome+nutrition+PhysAct+currentSmoker+alc+\
+                         age+gender+Diabetes+hdl+totchol+sbp")
+  
+# fit model
+denominator = conditional_densities(data, X, formula_ps_no,formula_ps, use_confounders=T)
+numerator = conditional_densities(data,X, formula_ps_no,formula_ps, use_confounders=F)
+propensity_density = numerator / denominator
+threshold <- quantile(propensity_density, 0.99)
+data <- data[propensity_density <= threshold, ]    
+propensity_density <- propensity_density[propensity_density <= threshold]
+data$weights <- propensity_density
 
-# Predicted values (propensity scores)
-data$ps <- predict(ps_model, type = "response")
+smd_after <- bal.tab(
+  data[, Z], 
+  treat = "nSES", 
+  data =data,
+  weights = "weights",
+  un = TRUE
+)
 
-# Create weights
-data$weights <- 1 / data$ps
+# Plotting the SMDs before and after weighting
+plt <- love.plot(smd_after, 
+          threshold = 0.1,  # Preferred threshold for good balance
+          var.order = "alphabetical") +
+  labs(title = "Pearson correlation between the covariate and treatment before and after Weighting\
+  In JHS using n-SES as exposure",
+       subtitle = "Dashed line: PC = -0.1 and PC = 0.1 (preferred threshold)")
 
-# Check balance before weighting
-bal.tab(nSES ~ nPhysFac + nFavFood + nRS + FamIncome + nutrition + PhysAct +
-          currentSmoker + alc + age + Diabetes + hdl + totchol + sbp + race + site, 
-        data = data, un = TRUE, continuous = "std")
+ggsave("jhs_nses_balance.png", plot = plt,
+           path = "../results/generalized_IPW/check_balance",
+           width = 8, height = 6, dpi = 300)
+```
 
-# Apply weights using the survey package
-design <- svydesign(ids = ~1, weights = ~weights, data = data)
 
-# Check balance after weighting
-bal.tab(nSES ~ nPhysFac + nFavFood + nRS + FamIncome + nutrition + PhysAct +
-          currentSmoker + alc + age + Diabetes + hdl + totchol + sbp + race + site, 
-        data = data, weights = data$weights, method = "weighting", continuous = "std")
+JHS nRS
+```{r}
+data <- jhs_std
+Y <- "cvd_10y_HF"
+X <- "nRS"
+Z <- c("nPhysFac","nFavFood","nSES",
+       "FamIncome","nutrition","PhysAct","currentSmoker","alc",
+       "age","Diabetes","hdl","totchol","sbp","gender")
 
-# Output balance tables
-print(bal.tab(nSES ~ nPhysFac + nFavFood + nRS + FamIncome + nutrition + PhysAct +
-                currentSmoker + alc + age + Diabetes + hdl + totchol + sbp + race + site, 
-              data = data, un = TRUE, continuous = "std"))
+# generate formula 
+formula_ps_no <- as.formula("nRS ~ 1")
+formula_ps <- as.formula("nRS ~ nSES+nPhysFac+nFavFood+\
+                         FamIncome+nutrition+PhysAct+currentSmoker+alc+\
+                         age+gender+Diabetes+hdl+totchol+sbp")
+  
+# fit model
+denominator = conditional_densities(data, X, formula_ps_no,formula_ps, use_confounders=T)
+numerator = conditional_densities(data,X, formula_ps_no,formula_ps, use_confounders=F)
+propensity_density = numerator / denominator
+threshold <- quantile(propensity_density, 0.99)
+data <- data[propensity_density <= threshold, ]    
+propensity_density <- propensity_density[propensity_density <= threshold]
+data$weights <- propensity_density
 
-print(bal.tab(nSES ~ nPhysFac + nFavFood + nRS + FamIncome + nutrition + PhysAct +
-                currentSmoker + alc + age + Diabetes + hdl + totchol + sbp + race + site, 
-              data = data, weights = data$weights, method = "weighting", continuous = "std"))
+# using continuous nSES
+smd_after <- bal.tab(
+  data[, Z], 
+  treat = "nRS", 
+  data =data,
+  weights = "weights",
+  un = TRUE
+)
 
-ggplot(data, aes(x = ps)) +
-  geom_histogram(binwidth = 0.1, fill = "blue", alpha = 0.7) +
-  labs(title = "Distribution of Propensity Scores")
+# Plotting the SMDs before and after weighting
+plt <- love.plot(smd_after, 
+          threshold = 0.1,  # Preferred threshold for good balance
+          var.order = "alphabetical") +
+  labs(title = "Pearson correlation between the covariate and treatment before and after Weighting\
+  In JHS using n-Racial Segregation as exposure",
+       subtitle = "Dashed line: PC = -0.1 and PC = 0.1 (preferred threshold)")
 
+ggsave("jhs_nrs_balance.png", plot = plt,
+           path = "../results/generalized_IPW/check_balance",
+           width = 8, height = 6, dpi = 300)
 ```
 
 
