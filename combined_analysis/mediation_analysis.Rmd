@@ -1,7 +1,7 @@
 ---
-title: "Generalized IPW"
+title: "Mediation analysis"
 author: "Xiaoting Chen"
-date: "2024-04-23"
+date: "2024-08-22"
 output: pdf_document
 ---
 
@@ -22,6 +22,7 @@ library(dplyr)
 library(stats) # handle normal distribution calculations
 library(splines) # using splines
 library(mgcv)
+library(bda) # sobel test
 ```
 
 ### data
@@ -29,13 +30,20 @@ library(mgcv)
 ```{r}
 all_combos <- readRDS("all_combos.rds")
 
+# subset of only mesa and jhs with cvd_10y_HF
+all_combos <- all_combos[c(1:20, 81:100)]
 ```
 
 ```{r}
-analysis_feature <- c('cvd_10y_HF', 'cvd_10y_noHF', 'nSES', 'nFavFood', 'nPhysFac', 'nRS',
+analysis_feature_mesa <- c('cvd_10y_HF', 'cvd_10y_noHF', 'nSES', 'nFavFood', 'nPhysFac', 'nRS',
                       'FamIncome', 'nutrition', 'PhysAct', 'currentSmoker', 'alc',
                       'age', 'gender', 'Diabetes', 'hdl', 'totchol', 'sbp',
                       'site', 'race')
+
+analysis_feature_jhs <- c('cvd_10y_HF', 'cvd_10y_noHF', 
+                      'nSES', 'nFavFood', 'nPhysFac', 'nRS',
+                      'FamIncome', 'nutrition', 'PhysAct', 'currentSmoker', 'alc',
+                      'age', 'gender', 'Diabetes', 'hdl', 'totchol', 'sbp')
 
 ind_feature_map <- c('0' = 1, '1' = 2, '2' = 3)
 ```
@@ -44,7 +52,7 @@ ind_feature_map <- c('0' = 1, '1' = 2, '2' = 3)
 mesa_std <- read.csv('../data_processed/MESA/mesa_std.csv')
 
 mesa_std <- mesa_std %>%
-  select(analysis_feature) %>%
+  select(analysis_feature_mesa) %>%
   mutate(# # treat ind behavirol variables as conitnuous, avoid partial significant 
     Diabetes = as.factor(Diabetes),
          site = as.factor(site),
@@ -56,19 +64,15 @@ mesa_std <- mesa_std %>%
     alc = recode(alc, !!!ind_feature_map)
   )
 
-mesa_bla_std <- mesa_std[mesa_std$race == 1, ] %>%
-  select(-race)
+# mesa_bla_std <- mesa_std[mesa_std$race == 1, ] %>%
+#   select(-race)
 ```
 
 ```{r}
 jhs_std <- read.csv('../data_processed/JHS/jhs_std.csv')
 
-analysis_feature <- c('cvd_10y_HF', 'cvd_10y_noHF', 'nSES', 'nFavFood', 'nPhysFac', 'nRS',
-                      'FamIncome', 'nutrition', 'PhysAct', 'currentSmoker', 'alc',
-                      'age', 'gender', 'Diabetes', 'hdl', 'totchol', 'sbp')
-
 jhs_std <- jhs_std %>%
-  select(analysis_feature) %>%
+  select(analysis_feature_jhs) %>%
   mutate(# # treat ind behavirol variables as conitnuous, avoid partial significant 
     Diabetes = as.factor(Diabetes)) %>%
   mutate( # recode to avoid 0
@@ -80,8 +84,8 @@ jhs_std <- jhs_std %>%
 ```
 
 ```{r}
-named_datasets <- list(mesa = mesa_std, mesa_bla = mesa_bla_std,jhs = jhs_std)
-names(named_datasets) <- c("mesa", "mesa_bla","jhs")
+named_datasets <- list(mesa = mesa_std, jhs = jhs_std)
+names(named_datasets) <- c("mesa", "jhs")
 ```
 
 ### function    
@@ -108,7 +112,7 @@ conditional_densities <- function(data, treatment, formula_ps_no_con, formula_ps
 
 
 
-## loop to generate result
+## result generation
 
 **Steps:**\\
 1. calculate weights \\
@@ -117,7 +121,7 @@ conditional_densities <- function(data, treatment, formula_ps_no_con, formula_ps
 4. Y ~ b0 + b3X + b4M + bZ + e\\
 
 
-### estimate
+### single estimate
 ```{r, warning=FALSE}
 report_df <- data.frame(
   Data = character(),
@@ -219,37 +223,14 @@ for (combo in all_combos) {
 
 
 ### bootstrap to obtain ci
-```{r}
-report_df <- data.frame(
-  Data = character(),
-  Y = character(),
-  X = character(),
-  mediator = character(),
-  b1 = numeric(),
-  b1_pvalue = numeric(),
-  b1_ci_lwr = numeric(),
-  b1_ci_upr = numeric(),
-  b2 = numeric(),
-  b2_pvalue = numeric(),
-  b2_ci_lwr = numeric(),
-  b2_ci_upr = numeric(),
-  b3 = numeric(),
-  b3_pvalue = numeric(),
-  b3_ci_lwr = numeric(),
-  b3_ci_upr = numeric(),
-  b4 = numeric(),
-  b4_pvalue = numeric(),
-  b4_ci_lwr = numeric(),
-  b4_ci_upr = numeric(),
-  b2_b4 = numeric(),
-  b2_b4_ci_lwr = numeric(),
-  b2_b4_ci_upr = numeric(),
-  stringsAsFactors = FALSE
-)
+```{r, warning=FALSE, message=FALSE}
+n_boot <- 1000
+set.seed(123)
 
-n_boot <- 100
-
-for (combo in all_combos) {
+for (i in seq_along(all_combos)) {
+  
+  print(i)  
+  combo <- all_combos[[i]]
   
   # get values
   data_name = combo$data
@@ -283,44 +264,18 @@ for (combo in all_combos) {
   data <- data[propensity_density <= threshold, ]
   propensity_density <- propensity_density[propensity_density <= threshold]
   
-  # run the 3 models
-  ## Y ~ X + Z
-  mod_X_to_Y <- glm(formula = formula_X_to_Y, data = data, family = binomial(), weights = propensity_density)
-  summary_X_to_Y <- summary(mod_X_to_Y)
-  coef_X_to_Y <- summary_X_to_Y$coefficients
-  ## M ~ X
-  mod_X_to_M <- glm(formula = formula_X_to_M, data = data, weights = propensity_density)
-  summary_X_to_M <- summary(mod_X_to_M)
-  coef_X_to_M <- summary_X_to_M$coefficients
-  ## Y ~ X + M +Z
-  mod_XM_to_Y <- glm(formula = formula_XM_to_Y, data = data, family = binomial(), weights = propensity_density)
-  summary_XM_to_Y <- summary(mod_XM_to_Y)
-  coef_XM_to_Y <- summary_XM_to_Y$coefficients
-  
-  
-  # store model result
-  b1 <- round(coef_X_to_Y[X, "Estimate"], digits = 5)
-  b1_pvalue <- round(coef_X_to_Y[X, "Pr(>|z|)"], digits = 5)
-  b2 <- round(coef_X_to_M[X, "Estimate"], digits = 5)
-  b2_pvalue <- round(coef_X_to_M[X, "Pr(>|t|)"], digits = 5)
-  b3 <- round(coef_XM_to_Y[X, "Estimate"], digits = 5)
-  b3_pvalue <- round(coef_XM_to_Y[X, "Pr(>|z|)"], digits = 5)
-  b4 <- round(coef_XM_to_Y[M, "Estimate"], digits = 5)
-  b4_pvalue <- round(coef_XM_to_Y[M, "Pr(>|z|)"], digits = 5)
-  b2_b4 <- round(b2 * b4, digits = 5)
-  
+
   # Bootstrap to get CIs
   bootstrap_results <- matrix(NA, n_boot, 5)
-  
-  set.seed(123) 
+  colnames(bootstrap_results) <- c("b1", "b2", "b3", "b4", "b2_b4")
   
   for (i in 1:n_boot) {
-    # Resample with replacement
+    # Resample 
     indices <- sample(1:nrow(data), replace = TRUE)
     boot_data <- data[indices, ]
-    boot_weights <- propensity_density[indices]
     
     # Refit the models on the bootstrap sample
+    boot_weights <- propensity_density[indices]
     boot_mod_X_to_Y <- glm(formula = formula_X_to_Y, data = boot_data, family = binomial(), weights = boot_weights)
     boot_mod_X_to_M <- glm(formula = formula_X_to_M, data = boot_data, weights = boot_weights)
     boot_mod_XM_to_Y <- glm(formula = formula_XM_to_Y, data = boot_data, family = binomial(), weights = boot_weights)
@@ -338,7 +293,63 @@ for (combo in all_combos) {
     bootstrap_results[i, 5] <- boot_coef_X_to_M[X] * boot_coef_XM_to_Y[M]
   }
   
-  # Calculate confidence intervals
+  # store the bootstrap results
+  file_name <- sprintf("../results/mediation_result/result_240816/%s_%s_%s.csv", data_name, X, M)
+  write.csv(bootstrap_results, file_name, row.names = FALSE)
+  
+}
+```
+
+
+
+
+### summarize mediation result 
+
+read the bootstrap results and calculate CI
+```{r, warning=FALSE, message=FALSE}
+file_path <- "../results/mediation_result/result_240816/"
+file_list <- list.files(file_path, pattern = "*.csv", full.names = TRUE)
+
+report_df <- data.frame(
+  Data = character(),
+  Y = character(),
+  X = character(),
+  mediator = character(),
+  b1 = numeric(),
+  # b1_pvalue = numeric(),
+  b1_ci_lwr = numeric(),
+  b1_ci_upr = numeric(),
+  b2 = numeric(),
+  # b2_pvalue = numeric(),
+  b2_ci_lwr = numeric(),
+  b2_ci_upr = numeric(),
+  b3 = numeric(),
+  # b3_pvalue = numeric(),
+  b3_ci_lwr = numeric(),
+  b3_ci_upr = numeric(),
+  b4 = numeric(),
+  # b4_pvalue = numeric(),
+  b4_ci_lwr = numeric(),
+  b4_ci_upr = numeric(),
+  b2_b4 = numeric(),
+  b2_b4_ci_lwr = numeric(),
+  b2_b4_ci_upr = numeric(),
+  stringsAsFactors = FALSE
+)
+
+for (file_name in file_list) {
+  
+  file_base <- basename(file_name)
+  file_base <- gsub(".csv", "", file_base)
+  
+  components <- strsplit(file_base, "_")[[1]]
+  data_name <- components[1]
+  X <- components[2]
+  M <- components[3]
+  
+  bootstrap_results <- read.csv(file_name)
+  
+  # Calculate confidence intervals from bootstrap results
   ci_b1 <- quantile(bootstrap_results[, 1], c(0.025, 0.975))
   ci_b2 <- quantile(bootstrap_results[, 2], c(0.025, 0.975))
   ci_b3 <- quantile(bootstrap_results[, 3], c(0.025, 0.975))
@@ -349,37 +360,182 @@ for (combo in all_combos) {
   # store final result
   new_df <- data.frame(
     Data = data_name,
-    Y = Y,
+    Y = "cvd_10y_HF",
     X = X,
     mediator = M,
-    b1 = b1,
-    b1_pvalue = b1_pvalue,
+    b1 = mean(bootstrap_results$b1),
+    # b1_pvalue = b1_pvalue,
     b1_ci_lwr = ci_b1[1],
     b1_ci_upr = ci_b1[2],
-    b2 = b2,
-    b2_pvalue = b2_pvalue,
+    b2 = mean(bootstrap_results$b2),
+    # b2_pvalue = b2_pvalue,
     b2_ci_lwr = ci_b2[1],
     b2_ci_upr = ci_b2[2],
-    b3 = b3,
-    b3_pvalue = b3_pvalue,
+    b3 = mean(bootstrap_results$b3),
+    # b3_pvalue = b3_pvalue,
     b3_ci_lwr = ci_b3[1],
     b3_ci_upr = ci_b3[2],
-    b4 = b4,
-    b4_pvalue = b4_pvalue,
+    b4 = mean(bootstrap_results$b4),
+    # b4_pvalue = b4_pvalue,
     b4_ci_lwr = ci_b4[1],
     b4_ci_upr = ci_b4[2],
-    b2_b4 = b2_b4,
+    b2_b4 = mean(bootstrap_results$b2_b4),
     b2_b4_ci_lwr = ci_b2_b4[1],
     b2_b4_ci_upr = ci_b2_b4[2],
     stringsAsFactors = FALSE
   )
 
   report_df <- rbind(report_df, new_df)
-
+  
 }
+
+
+# write.csv(report_df, "../results/mediation_result/mediation_bootstrap_ci_240816.csv", row.names = FALSE)
 ```
 
 
+sobel test
+```{r}
+sobel_df <- data.frame(
+  Data = character(),
+  Y = character(),
+  X = character(),
+  mediator = character(),
+  b1 = numeric(),
+  b1_pvalue = numeric(),
+  b2 = numeric(),
+  b2_pvalue = numeric(),
+  b3 = numeric(),
+  b3_pvalue = numeric(),
+  b4 = numeric(),
+  b4_pvalue = numeric(),
+  b2_b4 = numeric(),
+  sobel_pvalue = numeric()
+)
+
+for (combo in all_combos) {
+  
+  # get values
+  data_name = combo$data
+  data <- named_datasets[[data_name]]
+  Y <- combo$Y
+  X <- combo$X
+  M <- combo$M
+  Z <- combo$covariates_final
+  
+  # generate formula
+  ## formula for generating weights
+  formula_ps_no_str <- paste(X, "~ 1")
+  formula_ps_no <- as.formula(formula_ps_no_str)
+  formula_ps_str <- paste(X, "~ ", M, "+" ,paste(Z, collapse=" + "))
+  formula_ps <- as.formula(formula_ps_str)
+  ## formula for mediation test
+  formula_X_to_Y <- paste(Y, "~",X, "+", paste(Z, collapse=" + "))
+  formula_X_to_Y <- as.formula(formula_X_to_Y)
+  formula_X_to_M <- paste(M, "~", X)
+  formula_X_to_M <- as.formula(formula_X_to_M)
+  formula_XM_to_Y <- paste(Y, "~",X, "+", M, "+", paste(Z, collapse=" + "))
+  formula_XM_to_Y <- as.formula(formula_XM_to_Y)
+  
+  # estimate weights
+  denominator = conditional_densities(data, X, formula_ps_no,formula_ps, use_confounders=T)
+  numerator = conditional_densities(data,X, formula_ps_no,formula_ps, use_confounders=F)
+  propensity_density = numerator / denominator
+  threshold <- quantile(propensity_density, 0.99)
+  data <- data[propensity_density <= threshold, ]
+  propensity_density <- propensity_density[propensity_density <= threshold]
+  
+  # run the 3 models
+  
+  ## Y ~ X + Z
+  mod_X_to_Y <- glm(formula = formula_X_to_Y, data = data, family = binomial(), weights = propensity_density)
+  summary_X_to_Y <- summary(mod_X_to_Y)
+  coef_X_to_Y <- summary_X_to_Y$coefficients
+  ## M ~ X
+  mod_X_to_M <- glm(formula = formula_X_to_M, data = data, weights = propensity_density)
+  summary_X_to_M <- summary(mod_X_to_M)
+  coef_X_to_M <- summary_X_to_M$coefficients
+  se_X_to_M <- summary_X_to_M$coefficients[X, "Std. Error"]
+  ## Y ~ X + M +Z
+  mod_XM_to_Y <- glm(formula = formula_XM_to_Y, data = data, family = binomial(), weights = propensity_density)
+  summary_XM_to_Y <- summary(mod_XM_to_Y)
+  coef_XM_to_Y <- summary_XM_to_Y$coefficients
+  se_XM_to_Y <- summary_XM_to_Y$coefficients[M, "Std. Error"]
+
+  # extract and calculate model result
+  b1 <- round(coef_X_to_Y[X, "Estimate"], digits = 5)
+  b1_pvalue <- round(coef_X_to_Y[X, "Pr(>|z|)"], digits = 5)
+  b2 <- round(coef_X_to_M[X, "Estimate"], digits = 5)
+  b2_pvalue <- round(coef_X_to_M[X, "Pr(>|t|)"], digits = 5)
+  b3 <- round(coef_XM_to_Y[X, "Estimate"], digits = 5)
+  b3_pvalue <- round(coef_XM_to_Y[X, "Pr(>|z|)"], digits = 5)
+  b4 <- round(coef_XM_to_Y[M, "Estimate"], digits = 5)
+  b4_pvalue <- round(coef_XM_to_Y[M, "Pr(>|z|)"], digits = 5)
+  b2_b4 <- round(b2 * b4, digits = 5)
+  
+  sobel_se <- sqrt((b4^2 * se_X_to_M^2) + (b2^2 * se_XM_to_Y^2))
+  sobel_z <- (b2 * b4) / sobel_se
+  sobel_pvalue <- 2 * (1 - pnorm(abs(sobel_z)))
+  
+  # store result
+  new_df <- data.frame(
+    Data = data_name,
+    Y = Y,
+    X = X,
+    mediator = M,
+    b1 = b1,
+    b1_pvalue = b1_pvalue,
+    b2 = b2,
+    b2_pvalue = b2_pvalue,
+    b3 = b3,
+    b3_pvalue = b3_pvalue,
+    b4 = b4,
+    b4_pvalue = b4_pvalue,
+    b2_b4 = b2_b4,
+    sobel_pvalue = sobel_pvalue
+  )
+  
+  sobel_df <- rbind(sobel_df, new_df)
+
+}
+
+
+# write.csv(sobel_df, "../results/mediation_result/mediation_sobel_240816.csv", row.names = FALSE)
+```
+
+
+significant mediators 
+```{r}
+coef_ci <- read.csv("../results/mediation_result/mediation_bootstrap_ci_240816.csv")
+sobel_df <- read.csv("../results/mediation_result/mediation_sobel_240816.csv")
+
+# Baron and Kenny
+# Y ~ X (b1); M ~ X (b2); Y ~ M (b4)
+med_BK_ci <- coef_ci %>%
+  filter((b1_ci_lwr * b1_ci_upr > 0) & (b2_ci_lwr * b2_ci_upr > 0) & (b4_ci_lwr * b4_ci_upr > 0))
+## 0 result
+med_BK_coef_sobel <- sobel_df %>%
+  filter((b1_pvalue <= 0.05) & (b2_pvalue <= 0.05) & (b4_pvalue <= 0.05))
+## 2 results
+med_BK_sobel <- sobel_df %>% 
+  filter(sobel_pvalue <= 0.05)
+## 6 rsults
+
+# Zhao
+# b2*b4
+med_zhao <- coef_ci %>%
+  filter(b2_b4_ci_lwr * b2_b4_ci_upr > 0)
+## 3 results
+
+# MacKinnon
+# M ~ X (b2); Y ~ M (b4)
+med_mackinnon <- coef_ci %>%
+  filter((b2_ci_lwr * b2_ci_upr > 0) & (b4_ci_lwr * b4_ci_upr > 0))
+## 3 results
+```
+
+
+below not updated
 ```{r}
 # significant mediator
 significant_mediat <- report_df %>%
