@@ -1,0 +1,80 @@
+---
+title: "combo_generation"
+author: "Xiaoting Chen"
+date: "2024-10-09"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Prep
+
+### packages
+```{r, warning=FALSE}
+library(tidyr)
+library(dplyr)
+```
+
+### generate combos
+
+function
+```{r}
+generate_M_combo <- function(X_var, Y_var, M_var, data_name) {
+  
+  base_Z <- c('age', 'gender', 'Diabetes', 'hdl', 'totchol', 'sbp')
+  
+  ## add additional variables for mesa 
+  if (data_name == "mesa") {
+    covariates = c(base_Z, 'race', 'site')
+  } else if (data_name == "jhs") {
+    covariates = base_Z
+  }
+  
+  ## empty combinations
+  M_combos = list()
+  
+  ## generate combinations of X, Y, M + covariates_final
+  for (y in Y_var) {
+    
+    for (x in X_var) {
+      
+      for (m in M_var) {
+        
+        # Add the set of formulas to the list
+        M_combos <- c(M_combos, 
+                      list(list(
+                        data = data_name,
+                        Y = y,
+                        X = x,
+                        M = m,
+                        covariates = covariates)
+                        )
+                        )
+                      
+      }
+       
+    }
+  }
+  return(M_combos)
+}
+```
+
+
+```{r}
+Y_var <- c("cvd_10y_HF", "cvd_10y_noHF")
+X_var <- c('nSES', 'nFavFood', 'nPhysFac', 'nRS')
+M_var <- c('FamIncome', 'nutrition', 'PhysAct', 'currentSmoker', 'alc')
+covariates <- c('gender','age', 'sbp', 'hdl', 'totchol', 'Diabetes')
+
+mesa_combos <- generate_M_combo(X_var, Y_var, M_var, "mesa")
+jhs_combos <- generate_M_combo(X_var, Y_var, M_var, "jhs")
+
+all_combos <- c(mesa_combos, jhs_combos)
+saveRDS(all_combos, "all_combos.rds")
+```
+
+
+
+

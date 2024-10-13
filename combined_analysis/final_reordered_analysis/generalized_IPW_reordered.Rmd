@@ -1,0 +1,1003 @@
+---
+title: "Generalized IPW"
+author: "Xiaoting Chen"
+date: "2024-05-24"
+output: pdf_document
+---
+
+```{r setup, include=FALSE, warning=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This file is translated from the Generalized_IPW.ipynb file and expanded on the spline function and prediction curve generation.\
+
+
+## Prep
+
+### packages
+```{r, warning=FALSE, message=FALSE}
+library(readr)
+library(tidyr)
+library(ggplot2)
+library(dplyr)
+library(stats) # handle normal distribution calculations
+library(splines) # using splines
+library(mgcv)
+library(DescTools) # calculate mode
+library(tableone)
+library(cobalt)
+```
+
+### data
+
+```{r}
+all_combos <- readRDS("all_combos.rds")
+# in generalized IPW estimation, M is not considered, thus we only keep all the Y&X combos
+all_combos <- all_combos[seq(1, length(all_combos), by = 5)]
+```
+
+```{r}
+ind_feature_map <- c('0' = 1, '1' = 2, '2' = 3)
+```
+
+```{r}
+mesa_std <- read.csv('../../data_processed/MESA/mesa_std.csv')
+
+analysis_feature <- c('cvd_10y_HF', 'cvd_10y_noHF', 'nSES', 'nFavFood', 'nPhysFac', 'nRS',
+                      'FamIncome', 'nutrition', 'PhysAct', 'currentSmoker', 'alc',
+                      'age', 'gender', 'Diabetes', 'hdl', 'totchol', 'sbp',
+                      'site', 'race')
+
+mesa_std <- mesa_std %>%
+  select(analysis_feature) %>%
+  mutate(# # treat ind behavirol variables as conitnuous 
+    Diabetes = as.factor(Diabetes),
+         site = as.factor(site),
+         race = as.factor(race)) %>%
+  mutate( # recode to avoid 0
+    nutrition = recode(nutrition, !!!ind_feature_map),
+    PhysAct = recode(PhysAct, !!!ind_feature_map),
+    currentSmoker = recode(currentSmoker, !!!ind_feature_map),
+    alc = recode(alc, !!!ind_feature_map)
+  )
+
+```
+
+```{r}
+jhs_std <- read.csv('../../data_processed/JHS/jhs_std.csv')
+
+analysis_feature <- c('cvd_10y_HF', 'cvd_10y_noHF', 'nSES', 'nFavFood', 'nPhysFac', 'nRS',
+                      'FamIncome', 'nutrition', 'PhysAct', 'currentSmoker', 'alc',
+                      'age', 'gender', 'Diabetes', 'hdl', 'totchol', 'sbp')
+
+jhs_std <- jhs_std %>%
+  select(analysis_feature) %>%
+  mutate(# # treat ind behavirol variables as conitnuous
+    Diabetes = as.factor(Diabetes)) %>%
+  mutate( # recode to avoid 0
+    nutrition = recode(nutrition, !!!ind_feature_map),
+    PhysAct = recode(PhysAct, !!!ind_feature_map),
+    currentSmoker = recode(currentSmoker, !!!ind_feature_map),
+    alc = recode(alc, !!!ind_feature_map)
+  )
+```
+
+```{r}
+named_datasets <- list(mesa = mesa_std, jhs = jhs_std)
+names(named_datasets) <- c("mesa", "jhs")
+```
+
+### function    
+```{r}
+conditional_densities <- function(data, treatment, formula_ps_no_con, formula_ps_con, use_confounders = TRUE) {
+
+  formula <- if(use_confounders) formula_ps_con else formula_ps_no_con
+  
+  # Fit the linear model
+  model <- lm(as.formula(formula), data = data)
+  
+  # Calculate the fitted values and standard deviation of residuals
+  fitted_values <- fitted(model)
+  resid_std <- sd(resid(model))
+  
+  # Calculate the density of treatment under a normal distribution with parameters from the model
+  densities <- dnorm(data[[treatment]], mean = fitted_values, sd = resid_std)
+  
+  # Return the densities as a vector indexed similarly to the fitted values
+  return(setNames(densities, names(fitted_values)))
+}
+
+```
+
+
+## result generation
+
+### original sample
+```{r, warning=FALSE}
+report_df <- data.frame(
+  Data = character(),
+  Y = numeric(),
+  X = numeric(),
+  intercept = numeric(),
+  intercept_pvalue = numeric(),
+  X_coef = numeric(),
+  X_pvalue = numeric(),
+  X_ci_lwr = numeric(),
+  X_ci_upr = numeric(),
+  stringsAsFactors = FALSE 
+)
+
+
+for (combo in all_combos) {
+  
+  # get values
+  data_name = combo$data
+  data <- named_datasets[[data_name]]
+  
+  Y <- combo$Y
+  X <- combo$X
+  Z <- combo$covariates
+  
+  # generate formula
+  formula_ps_no_str <- paste(X, "~ 1")
+  formula_ps_no <- as.formula(formula_ps_no_str)
+    
+  formula_ps_str <- paste(X, "~ ", paste(Z, collapse=" + "))
+  formula_ps <- as.formula(formula_ps_str)
+    
+  formula_outcome_str <- paste(Y, "~",X)
+  formula_outcome <- as.formula(formula_outcome_str)
+  
+  # estimate
+  denominator = conditional_densities(data, X, formula_ps_no,formula_ps, use_confounders=T)
+  numerator = conditional_densities(data,X, formula_ps_no,formula_ps, use_confounders=F)
+  propensity_density = numerator / denominator
+  threshold <- quantile(propensity_density, 0.99)
+  data <- data[propensity_density <= threshold, ]
+  propensity_density <- propensity_density[propensity_density <= threshold]
+  outcome_mod <- glm(formula = formula_outcome, data = data, family = binomial(), weights = propensity_density)
+  summary_model <- summary(outcome_mod)
+
+  # store model result
+  coefficients <- summary_model$coefficients
+  ci <- confint(outcome_mod)   ## CI from the SE of coefs
+  
+  intercept <- round(coefficients["(Intercept)", "Estimate"], digits = 5)  ## common parts
+  intercept_pvalue <- round(coefficients["(Intercept)", "Pr(>|z|)"], digits = 5)
+  
+  X_coef <- round(coefficients[X, "Estimate"], digits = 5)
+  X_pvalue <- round(coefficients[X, "Pr(>|z|)"], digits = 5)
+  X_ci_lwr <- round(ci[X,"2.5 %"],digits = 5)
+  X_ci_upr <- round(ci[X,"97.5 %"],digits = 5)
+  
+  new_df <- data.frame(
+              Data = data_name,
+              Y = Y,
+              X = X,
+              intercept = intercept,
+              intercept_pvalue = intercept_pvalue,
+              X_coef = X_coef,
+              X_pvalue = X_pvalue,
+              X_ci_lwr = X_ci_lwr,
+              X_ci_upr = X_ci_upr,
+              stringsAsFactors = FALSE )
+
+  report_df <- rbind(report_df, new_df)
+
+}
+
+```
+
+```{r}
+write.csv(report_df, "../../results/reordered_results/generalized_ipw/report_df_origin.csv", row.names = FALSE)
+```
+
+
+### bootstrap 
+```{r, warning=FALSE, message=FALSE}
+n_boot <- 1000
+set.seed(1)
+
+report_df_boot <- data.frame(
+  boot = numeric(),
+  Data = character(),
+  Y = numeric(),
+  X = numeric(),
+  intercept = numeric(),
+  intercept_pvalue = numeric(),
+  X_coef = numeric(),
+  stringsAsFactors = FALSE 
+)
+
+
+for (i in seq_along(all_combos)) {
+  
+  print(i)  
+  combo <- all_combos[[i]]
+  
+  # get values
+  data_name = combo$data
+  data <- named_datasets[[data_name]]
+  
+  Y <- combo$Y
+  X <- combo$X
+  Z <- combo$covariates
+  
+  # generate formula
+  formula_ps_no_str <- paste(X, "~ 1")
+  formula_ps_no <- as.formula(formula_ps_no_str)
+    
+  formula_ps_str <- paste(X, "~ ", paste(Z, collapse=" + "))
+  formula_ps <- as.formula(formula_ps_str)
+    
+  formula_outcome_str <- paste(Y, "~", X)
+  formula_outcome <- as.formula(formula_outcome_str)
+ 
+  for (j in 1:n_boot) {
+    # Resample 
+    indices <- sample(1:nrow(data), replace = TRUE)
+    boot_data <- data[indices, ]
+    
+    # estimate
+    denominator = conditional_densities(boot_data, X, formula_ps_no,formula_ps, use_confounders=T)
+    numerator = conditional_densities(boot_data,X, formula_ps_no,formula_ps, use_confounders=F)
+    propensity_density = numerator / denominator
+    threshold <- quantile(propensity_density, 0.99)
+    boot_data <- boot_data[propensity_density <= threshold, ]
+    propensity_density <- propensity_density[propensity_density <= threshold]
+    outcome_mod <- glm(formula = formula_outcome, data = boot_data, family = binomial(), weights = propensity_density)
+    summary_model <- summary(outcome_mod)
+   
+    # store model result
+    coefficients <- summary_model$coefficients
+    
+    intercept <- round(coefficients["(Intercept)", "Estimate"], digits = 5)  ## common parts
+    intercept_pvalue <- round(coefficients["(Intercept)", "Pr(>|z|)"], digits = 5)
+    
+    X_coef <- round(coefficients[X, "Estimate"], digits = 5)
+    
+    new_df <- data.frame(
+                boot = j,
+                Data = data_name,
+                Y = Y,
+                X = X,
+                intercept = intercept,
+                intercept_pvalue = intercept_pvalue,
+                X_coef = X_coef,
+                stringsAsFactors = FALSE )
+  
+    report_df_boot <- rbind(report_df_boot, new_df)
+  }
+
+}
+
+```
+
+```{r}
+write.csv(report_df_boot, "../../results/reordered_results/generalized_ipw/report_df_boot.csv", row.names = FALSE)
+```
+
+
+summarize from the bootstrap data
+```{r}
+boot_summarized <- report_df_boot %>%
+  group_by(Data, Y, X) %>%
+  summarise(intercept = mean(intercept),
+            X_coef_mean = mean(X_coef),
+            X_ci_lwr = quantile(X_coef, 0.025),
+            X_ci_upr = quantile(X_coef, 0.975))
+```
+```{r}
+write.csv(boot_summarized, "../../results/reordered_results/generalized_ipw/boot_summarized.csv", row.names = FALSE)
+```
+
+## plot prediction curve for significant results
+```{r}
+# ipw_final <- read.csv("../results/generalized_IPW/ipw_final_0528.csv")
+# 
+# plot_ipw <- ipw_final %>%
+#   filter(X_pvalue <= 0.05) 
+```
+
+```{r}
+# for (i in 1:nrow(plot_ipw)) {
+#   print(i)
+#   
+#   # extract values
+#   data_name <- plot_ipw[i, "Data"]
+#   data <- named_datasets[[data_name]]
+#   Y <- plot_ipw[i, "Y"]
+#   X <- plot_ipw[i, "X"]
+#   moderator <- plot_ipw[i, "moderator"]
+#   X_coef <- plot_ipw[i, "X_coef"]
+#   X_pvalue <- plot_ipw[i, "X_pvalue"]
+#   interaction_coef <- plot_ipw[i, 'interaction_coef']
+#   interaction_pvalue <- plot_ipw[i, "interaction_pvalue"]
+#   
+#   # generate formula 
+#   
+#   ## covariates
+#   base_X <- c("nSES", "nPhysFac", "nFavFood", "nRS")
+#   base_Z <- c('age', 'gender', 'Diabetes', 'hdl', 'totchol', 'sbp')
+#   base_M <- c("FamIncome", "nutrition", "PhysAct", "currentSmoker", "alc")
+#   
+#   if (data_name == "mesa") {
+#     final_Z = c(base_Z, 'race', 'site')
+#   } else if (data_name == "mesa_bla") {
+#     final_Z = c(base_Z, 'site')
+#   } else if (data_name == "jhs") {
+#     final_Z = base_Z
+#   }
+#   
+#   ## formula
+#   formula_ps_no <- as.formula(paste(X, "~ 1"))
+#   
+#   formula_ps <- as.formula(paste(X, "~ ", paste(setdiff(base_X,X), collapse = "+"),"+",
+#                                  paste(base_M, collapse=" + "), "+" ,paste(final_Z, collapse=" + ")))
+#   
+#   formula_outcome_str <- ifelse(is.na(moderator), 
+#                             paste(Y, "~",X), 
+#                             paste(Y, "~",X,"+",moderator,"+",paste(X, moderator, sep=":"))
+#                             )
+#   formula_outcome <- as.formula(formula_outcome_str)
+#   
+#   # fit model
+#   denominator = conditional_densities(data, X, formula_ps_no,formula_ps, use_confounders=T)
+#   numerator = conditional_densities(data,X, formula_ps_no,formula_ps, use_confounders=F)
+#   propensity_density = numerator / denominator
+#   threshold <- quantile(propensity_density, 0.99)
+#   data <- data[propensity_density <= threshold, ]    
+#   propensity_density <- propensity_density[propensity_density <= threshold]
+#   outcome_mod <- glm(formula = formula_outcome, data = data, family = binomial(), weights = propensity_density)
+#     
+#   # Predicted probabilities and plotting
+#   if (is.na(moderator)) {
+#     pred_data <- data.frame(seq(from = min(data[[X]]), to = max(data[[X]]), by = 0.1))
+#     names(pred_data) <- X
+#     preds <- predict(outcome_mod, pred_data,type = "response", se.fit = TRUE)
+#     se <- preds$se.fit
+#     pred_data$fit <- preds$fit
+#     pred_data$lwr <- preds$fit - 1.96 * se
+#     pred_data$upr <- preds$fit + 1.96 * se
+# 
+#     plt <- ggplot(pred_data, aes(x = !!sym(X))) +
+#       geom_ribbon(aes(ymin = lwr, ymax = upr), fill = "blue", alpha = 0.2) +
+#       geom_line(aes(y = fit), color = "blue") +
+#       geom_hline(yintercept = 0, color = "black") +
+#       labs(title = "Predicted Probabilities of Positive Outcome",
+#          x = X, y = "Estimated Probability") +
+#       theme_minimal()
+# 
+#   } else if (moderator == "alc") {
+#     X_seq <- seq(from = min(data[[X]]), to = max(data[[X]]), by = 0.1)
+#     X_length <- length(X_seq)
+#     pred_data <- data.frame(X = rep(X_seq, 2),
+#                             alc = c(rep(1, X_length), rep(2, X_length)))
+#     names(pred_data) <- c(X, "alc")
+#     
+#     preds <- predict(outcome_mod, pred_data,type = "response", se.fit = TRUE)
+#     se <- preds$se.fit
+#     pred_data$fit <- preds$fit
+#     pred_data$lwr <- preds$fit - 1.96 * se
+#     pred_data$upr <- preds$fit + 1.96 * se
+#     
+#     plt <- ggplot(pred_data, aes(x = !!sym(X), y = fit, 
+#                                  group = factor(alc, levels = c(1,2), labels = c("No", "Yes")), 
+#                                  color = factor(alc))) +
+#       geom_line() +
+#       geom_hline(yintercept = 0, color = "black") +
+#       scale_color_manual(values = c("blue", "red"),  labels = c("No", "Yes"),
+#                          name = "Alcohol Drinking") +
+#       labs(title = "Predicted Probabilities of Positive Outcome",
+#          x = X, y = "Estimated Probability") +
+#       theme_minimal()
+# 
+#   } else if (moderator == "FamIncome") {
+#     X_seq <- seq(from = min(data[[X]]), to = max(data[[X]]), by = 0.1)
+#     X_length <- length(X_seq)
+#     pred_data <- data.frame(X = rep(X_seq, 4),
+#                             FamIncome = c(rep(1, X_length), rep(2, X_length), rep(3, X_length), rep(4, X_length)))
+#     names(pred_data) <- c(X, "FamIncome")
+#     
+#     preds <- predict(outcome_mod, pred_data,type = "response", se.fit = TRUE)
+#     se <- preds$se.fit
+#     pred_data$fit <- preds$fit
+#     pred_data$lwr <- preds$fit - 1.96 * se
+#     pred_data$upr <- preds$fit + 1.96 * se
+#     
+#     plt <- ggplot(pred_data, aes(x = !!sym(X), y = fit, 
+#                                  group = factor(FamIncome, levels = c(1,2,3,4)), 
+#                                  color = factor(FamIncome))) +
+#       geom_line() +
+#       geom_hline(yintercept = 0, color = "black") +
+#       scale_color_manual(values = c("red", "blue", "green", "orange"),  
+#                          labels = c("$0-11,999", "$12,000-24,999", "$25,000-74,999", "$75,000+"),
+#                          name = "Family Income") +
+#       labs(title = "Predicted Probabilities of Positive Outcome",
+#          x = X, y = "Estimated Probability") +
+#       theme_minimal()
+# 
+#   } else if (moderator == "PhysAct") {
+#     X_seq <- seq(from = min(data[[X]]), to = max(data[[X]]), by = 0.1)
+#     X_length <- length(X_seq)
+#     pred_data <- data.frame(X = rep(X_seq, 3),
+#                             PhysAct = c(rep(1, X_length), rep(2, X_length), rep(3, X_length)))
+#     names(pred_data) <- c(X, "PhysAct")
+#     
+#     preds <- predict(outcome_mod, pred_data,type = "response", se.fit = TRUE)
+#     se <- preds$se.fit
+#     pred_data$fit <- preds$fit
+#     pred_data$lwr <- preds$fit - 1.96 * se
+#     pred_data$upr <- preds$fit + 1.96 * se
+#     
+#     plt <- ggplot(pred_data, aes(x = !!sym(X), y = fit, 
+#                                  group = factor(PhysAct, levels = c(1,2,3)),  
+#                                  color = factor(PhysAct))) +
+#       geom_line() +
+#       geom_hline(yintercept = 0, color = "black") +
+#       scale_color_manual(values = c("blue", "red","green"),  labels = c("Poor", "Intermediate","Ideal"),
+#                          name = "Physical Activity") +
+#       labs(title = "Predicted Probabilities of Positive Outcome",
+#          x = X, y = "Estimated Probability") +
+#       theme_minimal()
+#   } else {
+#     print("error")
+#   }
+#   
+#   # export plot
+#   ggsave(paste0(data_name,"_",Y,"_",X,".png"), plot = plt,
+#             path = "../results/generalized_IPW/significant_prediction_curve",
+#             width = 8, height = 6, dpi = 300)
+# }
+
+```
+
+
+#### plot: X range +- 2sd
+```{r}
+# for (i in 1:nrow(plot_ipw)) {
+#   print(i)
+#   
+#   # extract values
+#   data_name <- plot_ipw[i, "Data"]
+#   data <- named_datasets[[data_name]]
+#   Y <- plot_ipw[i, "Y"]
+#   X <- plot_ipw[i, "X"]
+#   moderator <- plot_ipw[i, "moderator"]
+#   X_coef <- plot_ipw[i, "X_coef"]
+#   X_pvalue <- plot_ipw[i, "X_pvalue"]
+#   interaction_coef <- plot_ipw[i, 'interaction_coef']
+#   interaction_pvalue <- plot_ipw[i, "interaction_pvalue"]
+#   
+#   # generate formula 
+#   
+#   ## covariates
+#   base_X <- c("nSES", "nPhysFac", "nFavFood", "nRS")
+#   base_Z <- c('age', 'gender', 'Diabetes', 'hdl', 'totchol', 'sbp')
+#   base_M <- c("FamIncome", "nutrition", "PhysAct", "currentSmoker", "alc")
+#   
+#   if (data_name == "mesa") {
+#     final_Z = c(base_Z, 'race', 'site')
+#   } else if (data_name == "mesa_bla") {
+#     final_Z = c(base_Z, 'site')
+#   } else if (data_name == "jhs") {
+#     final_Z = base_Z
+#   }
+#   
+#   ## formula
+#   formula_ps_no <- as.formula(paste(X, "~ 1"))
+#   
+#   formula_ps <- as.formula(paste(X, "~ ", paste(setdiff(base_X,X), collapse = "+"),"+",
+#                                  paste(base_M, collapse=" + "), "+" ,paste(final_Z, collapse=" + ")))
+#   
+#   formula_outcome_str <- ifelse(is.na(moderator), 
+#                             paste(Y, "~",X), 
+#                             paste(Y, "~",X,"+",moderator,"+",paste(X, moderator, sep=":"))
+#                             )
+#   formula_outcome <- as.formula(formula_outcome_str)
+#   
+#   # fit model
+#   denominator = conditional_densities(data, X, formula_ps_no,formula_ps, use_confounders=T)
+#   numerator = conditional_densities(data,X, formula_ps_no,formula_ps, use_confounders=F)
+#   propensity_density = numerator / denominator
+#   threshold <- quantile(propensity_density, 0.99)
+#   data <- data[propensity_density <= threshold, ]    
+#   propensity_density <- propensity_density[propensity_density <= threshold]
+#   outcome_mod <- glm(formula = formula_outcome, data = data, family = binomial(), weights = propensity_density)
+#     
+#   # Predicted probabilities and plotting
+#   if (is.na(moderator)) {
+#     pred_data <- data.frame(seq(from = mean(data[[X]])-2*sd(data[[X]]), 
+#                                 to = mean(data[[X]])+2*sd(data[[X]]), by = 0.1))
+#     names(pred_data) <- X
+#     preds <- predict(outcome_mod, pred_data,type = "response", se.fit = TRUE)
+#     se <- preds$se.fit
+#     pred_data$fit <- preds$fit
+#     pred_data$lwr <- preds$fit - 1.96 * se
+#     pred_data$upr <- preds$fit + 1.96 * se
+# 
+#     plt <- ggplot(pred_data, aes(x = !!sym(X))) +
+#       geom_ribbon(aes(ymin = lwr, ymax = upr), fill = "blue", alpha = 0.2) +
+#       geom_line(aes(y = fit), color = "blue") +
+#       geom_hline(yintercept = 0, color = "black") +
+#       labs(title = "Predicted Probabilities of Positive Outcome",
+#          x = X, y = "Estimated Probability") +
+#       theme_minimal()
+# 
+#   } else if (moderator == "alc") {
+#     stats <- data %>%
+#       group_by(alc) %>%
+#       summarize(mean_X = mean(!!sym(X), na.rm = TRUE), 
+#                 sd_X = sd(!!sym(X), na.rm = TRUE))
+#     
+#     pred_data <- do.call(rbind, lapply(1:2, function(level) {
+#       mean_X <- stats$mean_X[stats$alc == level]
+#       sd_X <- stats$sd_X[stats$alc == level]
+#       X_seq <- seq(from = mean_X - 2 * sd_X, to = mean_X + 2 * sd_X, by = 0.1)
+#       data.frame(X = X_seq, alc = rep(level, length(X_seq)))
+#     }))
+#     names(pred_data) <- c(X, "alc")
+#     
+#     preds <- predict(outcome_mod, pred_data,type = "response", se.fit = TRUE)
+#     se <- preds$se.fit
+#     pred_data$fit <- preds$fit
+#     pred_data$lwr <- preds$fit - 1.96 * se
+#     pred_data$upr <- preds$fit + 1.96 * se
+#     
+#     plt <- ggplot(pred_data, aes(x = !!sym(X), y = fit, 
+#                                  group = factor(alc, levels = c(1,2), labels = c("No", "Yes")), 
+#                                  color = factor(alc))) +
+#       geom_line() +
+#       geom_ribbon(aes(ymin = lwr, ymax = upr), alpha = 0.2) +
+#       geom_hline(yintercept = 0, color = "black") +
+#       scale_color_manual(values = c("blue", "red"),  labels = c("No", "Yes"),
+#                          name = "Alcohol Drinking") +
+#       labs(title = "Predicted Probabilities of Positive Outcome",
+#          x = X, y = "Estimated Probability") +
+#       theme_minimal()
+# 
+#   } else if (moderator == "FamIncome") {
+#     stats <- data %>%
+#       group_by(FamIncome) %>%
+#       summarize(mean_X = mean(!!sym(X), na.rm = TRUE), 
+#                 sd_X = sd(!!sym(X), na.rm = TRUE))
+#    
+#     pred_data <- do.call(rbind, lapply(1:4, function(level) {
+#       mean_X <- stats$mean_X[stats$FamIncome == level]
+#       sd_X <- stats$sd_X[stats$FamIncome == level]
+#       X_seq <- seq(from = mean_X - 2 * sd_X, to = mean_X + 2 * sd_X, by = 0.1)
+#       data.frame(X = X_seq, FamIncome = rep(level, length(X_seq)))
+#     }))
+#     names(pred_data) <- c(X, "FamIncome")
+#     
+#     preds <- predict(outcome_mod, pred_data, type = "response", se.fit = TRUE)
+#     se <- preds$se.fit
+#     pred_data$fit <- preds$fit
+#     pred_data$lwr <- preds$fit - 1.96 * se
+#     pred_data$upr <- preds$fit + 1.96 * se
+#     
+#     plt <- ggplot(pred_data, aes(x = !!sym(X), y = fit, 
+#                                  group = factor(FamIncome, levels = c(1, 2, 3, 4)),  
+#                                  color = factor(FamIncome))) +
+#       geom_line() +
+#       geom_ribbon(aes(ymin = lwr, ymax = upr), alpha = 0.2) +
+#       geom_hline(yintercept = 0, color = "black") +
+#       scale_color_manual(values = c("red", "blue", "green", "orange"), 
+#                          labels = c("$0-11,999", "$12,000-24,999", "$25,000-74,999", "$75,000+"),
+#                          name = "Family Income") +
+#       labs(title = "Predicted Probabilities of Positive Outcome",
+#            x = X, y = "Estimated Probability") +
+#       theme_minimal()
+# 
+# 
+#   } else if (moderator == "PhysAct") {
+#     stats <- data %>%
+#       group_by(PhysAct) %>%
+#       summarize(mean_X = mean(!!sym(X), na.rm = TRUE), 
+#                 sd_X = sd(!!sym(X), na.rm = TRUE))
+#     
+#     # Generate prediction data
+#     pred_data <- do.call(rbind, lapply(1:3, function(level) {
+#       mean_X <- stats$mean_X[stats$PhysAct == level]
+#       sd_X <- stats$sd_X[stats$PhysAct == level]
+#       X_seq <- seq(from = mean_X - 2 * sd_X, to = mean_X + 2 * sd_X, by = 0.1)
+#       data.frame(X = X_seq, PhysAct = rep(level, length(X_seq)))
+#     }))
+#     
+#     # Set column names
+#     names(pred_data) <- c(X, "PhysAct")
+#     
+#     # Get predictions
+#     preds <- predict(outcome_mod, pred_data, type = "response", se.fit = TRUE)
+#     se <- preds$se.fit
+#     pred_data$fit <- preds$fit
+#     pred_data$lwr <- preds$fit - 1.96 * se
+#     pred_data$upr <- preds$fit + 1.96 * se
+#     
+#     # Plot
+#     plt <- ggplot(pred_data, aes(x = !!sym(X), y = fit, 
+#                                  group = factor(PhysAct, levels = c(1, 2, 3)),  
+#                                  color = factor(PhysAct))) +
+#       geom_line() +
+#       geom_ribbon(aes(ymin = lwr, ymax = upr), alpha = 0.2) +
+#       geom_hline(yintercept = 0, color = "black") +
+#       scale_color_manual(values = c("blue", "red", "green"), 
+#                          labels = c("Poor", "Intermediate", "Ideal"),
+#                          name = "Physical Activity") +
+#       labs(title = "Predicted Probabilities of Positive Outcome",
+#            x = X, y = "Estimated Probability") +
+#       theme_minimal()
+#   } else {
+#     print("error")
+#   }
+#   
+#   # export plot
+#   ggsave(paste0(data_name,"_",Y,"_",X,".png"), plot = plt,
+#            path = "../results/generalized_IPW/significant_prediction_curve_0528",
+#            width = 8, height = 6, dpi = 300)
+# }
+
+```
+
+```{r}
+# test_dat <- data %>%
+#   mutate(PhysAct = factor(PhysAct, levels = c(1, 2, 3)))
+# 
+# # Create the density plot
+# plt_density <- ggplot(test_dat, aes(x = !!sym("nSES"), fill = PhysAct, color = PhysAct)) +
+#   geom_density(alpha = 0.4) +
+#   scale_fill_manual(values = c("blue", "red", "green"), 
+#                     labels = c("Poor", "Intermediate", "Ideal"),
+#                     name = "Physical Activity") +
+#   scale_color_manual(values = c("blue", "red", "green"), 
+#                      labels = c("Poor", "Intermediate", "Ideal"),
+#                      name = "Physical Activity") +
+#   labs(title = "Density Plot of X by Levels of Physical Activity",
+#        x = X, y = "Density") +
+#   theme_minimal()
+# 
+# print(plt_density)
+```
+
+
+
+### Manually plot (final)
+
+MESA nSES
+```{r, warning=FALSE}
+data <- mesa_std
+Y <- "cvd_10y_HF"
+X <- "nSES"
+
+# generate formula 
+formula_ps_no <- as.formula("nSES ~ 1")
+formula_ps <- as.formula("nSES ~ nPhysFac+nFavFood+nRS+\
+                         FamIncome+nutrition+PhysAct+currentSmoker+alc+\
+                         age+gender+Diabetes+hdl+totchol+sbp+\
+                         race+site")
+formula_outcome <- as.formula("cvd_10y_HF ~ nSES + nutrition")
+  
+# fit model
+denominator = conditional_densities(data, X, formula_ps_no,formula_ps, use_confounders=T)
+numerator = conditional_densities(data,X, formula_ps_no,formula_ps, use_confounders=F)
+propensity_density = numerator / denominator
+threshold <- quantile(propensity_density, 0.99)
+data <- data[propensity_density <= threshold, ]    
+propensity_density <- propensity_density[propensity_density <= threshold]
+outcome_mod <- glm(formula = formula_outcome, data = data, family = binomial(), weights = propensity_density)
+    
+# Predicted probabilities and plotting
+## generate pred data
+pred_data <- data.frame(seq(from = mean(data[[X]])-2*sd(data[[X]]), 
+                                to = mean(data[[X]])+2*sd(data[[X]]), by = 0.1))
+names(pred_data) <- X
+pred_data$nutrition <- Mode(mesa_std$nutrition)
+
+preds <- predict(outcome_mod, pred_data,type = "response", se.fit = TRUE)
+se <- preds$se.fit
+pred_data$fit <- preds$fit
+pred_data$lwr <- preds$fit - 1.96 * se
+pred_data$upr <- preds$fit + 1.96 * se
+
+plt1 <- ggplot(pred_data, aes(x = !!sym(X))) +
+  geom_ribbon(aes(ymin = lwr, ymax = upr), fill = "blue", alpha = 0.2) +
+  geom_line(aes(y = fit), color = "blue") +
+  geom_hline(yintercept = 0, color = "black") +
+  labs(x = "Neighborhood Socioeconomic Status Level in MESA", y = "Predicted Probabilities of Experiencing CVD") +
+  theme_minimal() +
+  theme(
+        axis.title.x = element_text(size = 20),  
+    axis.title.y = element_text(size = 20), 
+    axis.text.x = element_text(size = 20),  
+    axis.text.y = element_text(size = 20)   
+      )
+
+plt1
+
+# ggsave("mesa_nses.png", plot = plt1,
+#            path = "../results/generalized_IPW/prediction_curve_final",
+#            width = 10, height = 8, dpi = 300)
+
+```
+
+JHS nSES
+```{r}
+data <- jhs_std
+Y <- "cvd_10y_HF"
+X <- "nSES"
+
+# generate formula 
+formula_ps_no <- as.formula("nSES ~ 1")
+formula_ps <- as.formula("nSES ~ nPhysFac+nFavFood+nRS+\
+                         FamIncome+nutrition+PhysAct+currentSmoker+alc+\
+                         age+gender+Diabetes+hdl+totchol+sbp")
+formula_outcome <- as.formula("cvd_10y_HF ~ nSES + PhysAct + nSES:PhysAct + FamIncome")
+  
+# fit model
+denominator = conditional_densities(data, X, formula_ps_no,formula_ps, use_confounders=T)
+numerator = conditional_densities(data,X, formula_ps_no,formula_ps, use_confounders=F)
+propensity_density = numerator / denominator
+threshold <- quantile(propensity_density, 0.99)
+data <- data[propensity_density <= threshold, ]    
+propensity_density <- propensity_density[propensity_density <= threshold]
+outcome_mod <- glm(formula = formula_outcome, data = data, family = binomial(), weights = propensity_density)
+    
+# Predicted probabilities and plotting
+## generate pred data
+stats <- data %>%
+      group_by(PhysAct) %>%
+      summarize(mean_X = mean(!!sym(X), na.rm = TRUE), 
+                sd_X = sd(!!sym(X), na.rm = TRUE))
+    
+# Generate prediction data
+pred_data <- do.call(rbind, lapply(1:3, function(level) {
+  mean_X <- stats$mean_X[stats$PhysAct == level]
+  sd_X <- stats$sd_X[stats$PhysAct == level]
+  X_seq <- seq(from = mean_X - 2 * sd_X, to = mean_X + 2 * sd_X, by = 0.1)
+  data.frame(X = X_seq, PhysAct = rep(level, length(X_seq)))
+    }))
+    
+# Set column names
+names(pred_data) <- c(X, "PhysAct")
+pred_data$FamIncome <- Mode(jhs_std$FamIncome)
+    
+# Get predictions
+preds <- predict(outcome_mod, pred_data, type = "response", se.fit = TRUE)
+se <- preds$se.fit
+pred_data$fit <- preds$fit
+pred_data$lwr <- preds$fit - 1.96 * se
+pred_data$upr <- preds$fit + 1.96 * se
+    
+# Plot
+plt2 <- ggplot(pred_data, aes(x = !!sym(X), y = fit, 
+                                 group = factor(PhysAct, levels = c(1, 2, 3)),  
+                                 color = factor(PhysAct))) +
+      geom_line() +
+      geom_ribbon(aes(ymin = lwr, ymax = upr), alpha = 0.2) +
+      geom_hline(yintercept = 0, color = "black") +
+      scale_color_manual(values = c("blue", "red", "green"), 
+                         labels = c("Poor", "Intermediate", "Ideal"),
+                         name = "Physical Activity") +
+      labs(x = "Neighborhood Socioeconomic Status Level in JHS", y = "Predicted Probabilities of Experiencing CVD") +
+  theme_minimal() +
+  theme(
+        axis.title.x = element_text(size = 20),  
+    axis.title.y = element_text(size = 20), 
+    axis.text.x = element_text(size = 20),  
+    axis.text.y = element_text(size = 20),
+        legend.text = element_text(size = 20),
+    legend.title = element_text(size = 20) 
+      )
+plt2
+# ggsave("jhs_nses.png", plot = plt2,
+#            path = "../results/generalized_IPW/prediction_curve_final",
+#            width = 12, height = 8, dpi = 300)
+```
+
+JHS nRS
+```{r, warning=FALSE}
+data <- jhs_std
+Y <- "cvd_10y_HF"
+X <- "nRS"
+
+# generate formula 
+formula_ps_no <- as.formula("nRS ~ 1")
+formula_ps <- as.formula("nRS ~ nSES+nPhysFac+nFavFood+\
+                         FamIncome+nutrition+PhysAct+currentSmoker+alc+\
+                         age+Diabetes+hdl+totchol+sbp")
+formula_outcome <- as.formula("cvd_10y_HF ~ nRS + FamIncome")
+  
+# fit model
+denominator = conditional_densities(data, X, formula_ps_no,formula_ps, use_confounders=T)
+numerator = conditional_densities(data,X, formula_ps_no,formula_ps, use_confounders=F)
+propensity_density = numerator / denominator
+threshold <- quantile(propensity_density, 0.99)
+data <- data[propensity_density <= threshold, ]    
+propensity_density <- propensity_density[propensity_density <= threshold]
+outcome_mod <- glm(formula = formula_outcome, data = data, family = binomial(), weights = propensity_density)
+    
+# Predicted probabilities and plotting
+## generate pred data
+pred_data <- data.frame(seq(from = mean(data[[X]])-2*sd(data[[X]]), 
+                                to = mean(data[[X]])+2*sd(data[[X]]), by = 0.1))
+names(pred_data) <- X
+pred_data$FamIncome <- Mode(jhs_std$FamIncome)
+
+preds <- predict(outcome_mod, pred_data,type = "response", se.fit = TRUE)
+se <- preds$se.fit
+pred_data$fit <- preds$fit
+pred_data$lwr <- preds$fit - 1.96 * se
+pred_data$upr <- preds$fit + 1.96 * se
+
+plt3 <- ggplot(pred_data, aes(x = !!sym(X))) +
+  geom_ribbon(aes(ymin = lwr, ymax = upr), fill = "blue", alpha = 0.2) +
+  geom_line(aes(y = fit), color = "blue") +
+  geom_hline(yintercept = 0, color = "black") +
+  labs(x = "Neighborhood Racial Segregation Level in JHS", y = "Predicted Probabilities of Experiencing CVD") +
+  theme_minimal() +
+  theme(
+        axis.title.x = element_text(size = 20),  
+    axis.title.y = element_text(size = 20), 
+    axis.text.x = element_text(size = 20),  
+    axis.text.y = element_text(size = 20)
+      )
+
+plt3
+
+# ggsave("jhs_nrs.png", plot = plt3,
+#            path = "../results/generalized_IPW/prediction_curve_final",
+#            width = 10, height = 8, dpi = 300)
+```
+
+## Check assumption
+
+dichotomize the neighborhood exposure variables after weight calculation, to examine overlap and balance\\
+tutorial from https://ehsanx.github.io/psw/s3.html\\
+
+
+MESA nSES
+```{r, warning=FALSE}
+data <- mesa_std
+Y <- "cvd_10y_HF"
+X <- "nSES"
+Z <- c("nPhysFac","nFavFood","nRS",
+       "FamIncome","nutrition","PhysAct","currentSmoker","alc",
+       "age","Diabetes","hdl","totchol","sbp","gender",
+       "race","site")
+
+# generate formula 
+formula_ps_no <- as.formula("nSES ~ 1")
+formula_ps <- as.formula("nSES ~ nPhysFac+nFavFood+nRS+\
+                         FamIncome+nutrition+PhysAct+currentSmoker+alc+\
+                         age+Diabetes+hdl+totchol+sbp+gender+\
+                         race+site")
+  
+# get weights
+denominator = conditional_densities(data, X, formula_ps_no,formula_ps, use_confounders=T)
+numerator = conditional_densities(data,X, formula_ps_no,formula_ps, use_confounders=F)
+propensity_density = numerator / denominator
+threshold <- quantile(propensity_density, 0.99)
+data <- data[propensity_density <= threshold, ]    
+propensity_density <- propensity_density[propensity_density <= threshold]
+data$weights <- propensity_density
+
+
+smd_after <- bal.tab(
+  data[, Z], 
+  treat = "nSES", 
+  data =data,
+  weights = "weights",
+  un = TRUE
+)
+
+# Plotting the SMDs before and after weighting
+plt <- love.plot(smd_after, 
+          threshold = 0.1,  # Preferred threshold for good balance
+          var.order = "alphabetical") +
+  labs(title = "Pearson correlation between the covariate and treatment before and after Weighting\
+  In MESA using n-SES as exposure",
+       subtitle = "Dashed line: PC = -0.1 and PC = 0.1 (preferred threshold)")
+
+plt
+
+# ggsave("mesa_nses_balance.png", plot = plt,
+#            path = "../results/generalized_IPW/check_balance",
+#            width = 8, height = 6, dpi = 300)
+```
+
+
+JHS nSES
+```{r}
+data <- jhs_std
+Y <- "cvd_10y_HF"
+X <- "nSES"
+Z <- c("nPhysFac","nFavFood","nRS",
+       "FamIncome","nutrition","PhysAct","currentSmoker","alc",
+       "age","Diabetes","hdl","totchol","sbp","gender")
+
+# generate formula 
+formula_ps_no <- as.formula("nSES ~ 1")
+formula_ps <- as.formula("nSES ~ nPhysFac+nFavFood+nRS+\
+                         FamIncome+nutrition+PhysAct+currentSmoker+alc+\
+                         age+gender+Diabetes+hdl+totchol+sbp")
+  
+# fit model
+denominator = conditional_densities(data, X, formula_ps_no,formula_ps, use_confounders=T)
+numerator = conditional_densities(data,X, formula_ps_no,formula_ps, use_confounders=F)
+propensity_density = numerator / denominator
+threshold <- quantile(propensity_density, 0.99)
+data <- data[propensity_density <= threshold, ]    
+propensity_density <- propensity_density[propensity_density <= threshold]
+data$weights <- propensity_density
+
+smd_after <- bal.tab(
+  data[, Z], 
+  treat = "nSES", 
+  data =data,
+  weights = "weights",
+  un = TRUE
+)
+
+# Plotting the SMDs before and after weighting
+plt <- love.plot(smd_after, 
+          threshold = 0.1,  # Preferred threshold for good balance
+          var.order = "alphabetical") +
+  labs(title = "Pearson correlation between the covariate and treatment before and after Weighting\
+  In JHS using n-SES as exposure",
+       subtitle = "Dashed line: PC = -0.1 and PC = 0.1 (preferred threshold)")
+
+# ggsave("jhs_nses_balance.png", plot = plt,
+#            path = "../results/generalized_IPW/check_balance",
+#            width = 8, height = 6, dpi = 300)
+```
+
+
+JHS nRS
+```{r}
+data <- jhs_std
+Y <- "cvd_10y_HF"
+X <- "nRS"
+Z <- c("nPhysFac","nFavFood","nSES",
+       "FamIncome","nutrition","PhysAct","currentSmoker","alc",
+       "age","Diabetes","hdl","totchol","sbp","gender")
+
+# generate formula 
+formula_ps_no <- as.formula("nRS ~ 1")
+formula_ps <- as.formula("nRS ~ nSES+nPhysFac+nFavFood+\
+                         FamIncome+nutrition+PhysAct+currentSmoker+alc+\
+                         age+gender+Diabetes+hdl+totchol+sbp")
+  
+# fit model
+denominator = conditional_densities(data, X, formula_ps_no,formula_ps, use_confounders=T)
+numerator = conditional_densities(data,X, formula_ps_no,formula_ps, use_confounders=F)
+propensity_density = numerator / denominator
+threshold <- quantile(propensity_density, 0.99)
+data <- data[propensity_density <= threshold, ]    
+propensity_density <- propensity_density[propensity_density <= threshold]
+data$weights <- propensity_density
+
+# using continuous nSES
+smd_after <- bal.tab(
+  data[, Z], 
+  treat = "nRS", 
+  data =data,
+  weights = "weights",
+  un = TRUE
+)
+
+# Plotting the SMDs before and after weighting
+plt <- love.plot(smd_after, 
+          threshold = 0.1,  # Preferred threshold for good balance
+          var.order = "alphabetical") +
+  labs(title = "Pearson correlation between the covariate and treatment before and after Weighting\
+  In JHS using n-Racial Segregation as exposure",
+       subtitle = "Dashed line: PC = -0.1 and PC = 0.1 (preferred threshold)")
+
+# ggsave("jhs_nrs_balance.png", plot = plt,
+#            path = "../results/generalized_IPW/check_balance",
+#            width = 8, height = 6, dpi = 300)
+```
+
+
+
+
