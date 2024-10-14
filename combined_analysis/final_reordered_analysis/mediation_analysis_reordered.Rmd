@@ -110,12 +110,13 @@ conditional_densities <- function(data, treatment, formula_ps_no_con, formula_ps
 ## result generation
 
 **Steps:**\\
-M ~ b0 + b11X + e\\
-Y ~ b0 + b21X + b22M + bZ + e\\
+Y ~ b0 + b1X + bZ + e
+M ~ b0 + b2X + e\\
+Y ~ b0 + b3X + b4M + bZ + e\\
 
 ### bootstrap to obtain ci
 ```{r, warning=FALSE, message=FALSE}
-n_boot <- 10
+n_boot <- 1000
 set.seed(123)
 
 med_report_df_boot <- data.frame(
@@ -124,10 +125,11 @@ med_report_df_boot <- data.frame(
   Y = character(),
   X = character(),
   Me = character(),
-  b11 = numeric(),
-  b21 = numeric(),
-  b22 = numeric(), 
-  b11_b22 = numeric(),
+  b1 = numeric(),
+  b2 = numeric(),
+  b3 = numeric(),
+  b4 = numeric(),
+  b2_b4 = numeric(),
   stringsAsFactors = FALSE 
 )
 
@@ -145,6 +147,8 @@ for (i in seq_along(all_combos)) {
   Z <- combo$covariates
   
   # generate formula for mediation test
+  formula_X_to_Y <- paste(Y_name, "~", X_name)
+  formula_X_to_Y <- as.formula(formula_X_to_Y)
   formula_X_to_M <- paste(M_name, "~", X_name)
   formula_X_to_M <- as.formula(formula_X_to_M)
   formula_XM_to_Y <- paste(Y_name, "~", X_name, "+", M_name, "+", paste(Z, collapse=" + "))
@@ -157,11 +161,13 @@ for (i in seq_along(all_combos)) {
     indices <- sample(1:nrow(data), replace = TRUE)
     boot_data <- data[indices, ]
     
-    # Refit the models on the bootstrap sample
+    # fit the models on the bootstrap sample
+    boot_mod_X_to_Y <- glm(formula = formula_X_to_Y, data = boot_data)
     boot_mod_X_to_M <- glm(formula = formula_X_to_M, data = boot_data)
     boot_mod_XM_to_Y <- glm(formula = formula_XM_to_Y, data = boot_data, family = binomial())
     
     # Extract coefficients
+    boot_coef_X_to_Y <- coef(boot_mod_X_to_Y)
     boot_coef_X_to_M <- coef(boot_mod_X_to_M)
     boot_coef_XM_to_Y <- coef(boot_mod_XM_to_Y)
     
@@ -171,10 +177,11 @@ for (i in seq_along(all_combos)) {
                 Y = Y_name,
                 X = X_name,
                 Me = M_name,
-                b11 = boot_coef_X_to_M[X_name],
-                b21 = boot_coef_XM_to_Y[X_name],
-                b22 = boot_coef_XM_to_Y[M_name], 
-                b11_b22 = boot_coef_X_to_M[X_name]*boot_coef_XM_to_Y[M_name],
+                b1 = boot_coef_X_to_Y[X_name],
+                b2 = boot_coef_X_to_M[X_name],
+                b3 = boot_coef_XM_to_Y[X_name],
+                b4 = boot_coef_XM_to_Y[M_name], 
+                b2_b4 = boot_coef_X_to_M[X_name]*boot_coef_XM_to_Y[M_name],
                 stringsAsFactors = FALSE )
   
     med_report_df_boot <- rbind(med_report_df_boot, new_df)
@@ -183,101 +190,44 @@ for (i in seq_along(all_combos)) {
 }
 ```
 
-
+```{r}
+write.csv(med_report_df_boot, "../../results/reordered_results/mediation/med_report_df_boot.csv", row.names = FALSE)
+```
 
 
 ### summarize mediation result 
 
-read the bootstrap results and calculate CI
-```{r, warning=FALSE, message=FALSE}
-file_path <- "../results/mediation_result/result_240816/"
-file_list <- list.files(file_path, pattern = "*.csv", full.names = TRUE)
+```{r}
+boot_summarized <- med_report_df_boot %>%
+  group_by(Data, Y, X, Me) %>%
+  summarise(b1_mean = mean(b1),
+            b1_ci_lwr = quantile(b1, 0.025),
+            b1_ci_upr = quantile(b1, 0.975),
+            b2_mean = mean(b2),
+            b2_ci_lwr = quantile(b2, 0.025),
+            b2_ci_upr = quantile(b2, 0.975),
+            b3_mean = mean(b3),
+            b3_ci_lwr = quantile(b3, 0.025),
+            b3_ci_upr = quantile(b3, 0.975),
+            b4_mean = mean(b4),
+            b4_ci_lwr = quantile(b4, 0.025),
+            b4_ci_upr = quantile(b4, 0.975),
+            b2_b4_mean = mean(b2_b4),
+            b2_b4_ci_lwr = quantile(b2_b4, 0.025),
+            b2_b4_ci_upr = quantile(b2_b4, 0.975))
 
-report_df <- data.frame(
-  Data = character(),
-  Y = character(),
-  X = character(),
-  mediator = character(),
-  b1 = numeric(),
-  # b1_pvalue = numeric(),
-  b1_ci_lwr = numeric(),
-  b1_ci_upr = numeric(),
-  b2 = numeric(),
-  # b2_pvalue = numeric(),
-  b2_ci_lwr = numeric(),
-  b2_ci_upr = numeric(),
-  b3 = numeric(),
-  # b3_pvalue = numeric(),
-  b3_ci_lwr = numeric(),
-  b3_ci_upr = numeric(),
-  b4 = numeric(),
-  # b4_pvalue = numeric(),
-  b4_ci_lwr = numeric(),
-  b4_ci_upr = numeric(),
-  b2_b4 = numeric(),
-  b2_b4_ci_lwr = numeric(),
-  b2_b4_ci_upr = numeric(),
-  stringsAsFactors = FALSE
-)
+write.csv(boot_summarized, "../../results/reordered_results/mediation/med_boot_summarized.csv", row.names = FALSE)
+```
 
-for (file_name in file_list) {
-  
-  file_base <- basename(file_name)
-  file_base <- gsub(".csv", "", file_base)
-  
-  components <- strsplit(file_base, "_")[[1]]
-  data_name <- components[1]
-  X <- components[2]
-  M <- components[3]
-  
-  bootstrap_results <- read.csv(file_name)
-  
-  # Calculate confidence intervals from bootstrap results
-  ci_b1 <- quantile(bootstrap_results[, 1], c(0.025, 0.975))
-  ci_b2 <- quantile(bootstrap_results[, 2], c(0.025, 0.975))
-  ci_b3 <- quantile(bootstrap_results[, 3], c(0.025, 0.975))
-  ci_b4 <- quantile(bootstrap_results[, 4], c(0.025, 0.975))
-  ci_b2_b4 <- quantile(bootstrap_results[, 5], c(0.025, 0.975))
-  
-  
-  # store final result
-  new_df <- data.frame(
-    Data = data_name,
-    Y = "cvd_10y_HF",
-    X = X,
-    mediator = M,
-    b1 = mean(bootstrap_results$b1),
-    # b1_pvalue = b1_pvalue,
-    b1_ci_lwr = ci_b1[1],
-    b1_ci_upr = ci_b1[2],
-    b2 = mean(bootstrap_results$b2),
-    # b2_pvalue = b2_pvalue,
-    b2_ci_lwr = ci_b2[1],
-    b2_ci_upr = ci_b2[2],
-    b3 = mean(bootstrap_results$b3),
-    # b3_pvalue = b3_pvalue,
-    b3_ci_lwr = ci_b3[1],
-    b3_ci_upr = ci_b3[2],
-    b4 = mean(bootstrap_results$b4),
-    # b4_pvalue = b4_pvalue,
-    b4_ci_lwr = ci_b4[1],
-    b4_ci_upr = ci_b4[2],
-    b2_b4 = mean(bootstrap_results$b2_b4),
-    b2_b4_ci_lwr = ci_b2_b4[1],
-    b2_b4_ci_upr = ci_b2_b4[2],
-    stringsAsFactors = FALSE
-  )
+```{r}
+med_boot_sig <- boot_summarized %>%
+  filter(b2_b4_ci_lwr*b2_b4_ci_upr > 0)
 
-  report_df <- rbind(report_df, new_df)
-  
-}
-
-
-# write.csv(report_df, "../results/mediation_result/mediation_bootstrap_ci_240816.csv", row.names = FALSE)
+write.csv(med_boot_sig, "../../results/reordered_results/mediation/med_boot_sig.csv", row.names = FALSE)
 ```
 
 
-sobel test
+### sobel test
 ```{r}
 sobel_df <- data.frame(
   Data = character(),
@@ -416,31 +366,5 @@ med_mackinnon <- coef_ci %>%
   filter((b2_ci_lwr * b2_ci_upr > 0) & (b4_ci_lwr * b4_ci_upr > 0))
 ## 3 results
 ```
-
-
-below not updated
-```{r}
-# significant mediator
-significant_mediat <- report_df %>%
-  filter(b1_pvalue <= 0.05,
-         b2_pvalue <= 0.05,
-         b4_pvalue <= 0.05) %>%
-  rename(ADE = b3,
-         ADE_ci_lwr = b3_ci_lwr,
-         ADE_ci_upr = b3_ci_upr,
-         ACME = b2_b4,
-         ACME_ci_lwr = b2_b4_ci_lwr,
-         ACME_ci_upr = b2_b4_ci_upr,
-         Total_effect = b1,
-         Total_effect_ci_lwr = b1_ci_lwr,
-         Total_effect_ci_upr = b1_ci_upr) %>%
-  select(1:4,5,7,8,13,15,16,21:23)
-```
-
-```{r}
-write.csv(significant_mediat, "../results/mediation_result/significant_mediat.csv", row.names = FALSE)
-write.csv(report_df, "../results/mediation_result/mediation_result_ci.csv", row.names = FALSE)
-```
-
 
 

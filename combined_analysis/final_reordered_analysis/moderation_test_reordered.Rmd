@@ -1,0 +1,186 @@
+---
+title: "Moderation test"
+author: "Xiaoting Chen"
+date: "2024-05-09"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Prep
+
+### packages
+```{r, warning=FALSE}
+library(tidyr)
+library(ggplot2)
+library(dplyr)
+```
+
+### data
+
+```{r}
+all_combos <- readRDS("all_combos.rds")
+```
+
+```{r}
+ind_feature_map <- c('0' = 1, '1' = 2, '2' = 3)
+```
+
+```{r}
+mesa_std <- read.csv('../../data_processed/MESA/mesa_std.csv')
+
+analysis_feature <- c('cvd_10y_HF', 'cvd_10y_noHF', 'nSES', 'nFavFood', 'nPhysFac', 'nRS',
+                      'FamIncome', 'nutrition', 'PhysAct', 'currentSmoker', 'alc',
+                      'age', 'gender', 'Diabetes', 'hdl', 'totchol', 'sbp',
+                      'site', 'race')
+
+mesa_std <- mesa_std %>%
+  select(analysis_feature) %>%
+  mutate( # treat ind behavirol variables as conitnuous, avoid partial significant 
+    Diabetes = as.factor(Diabetes),
+         site = as.factor(site),
+         race = as.factor(race))  %>%
+  mutate( # recode to avoid 0
+    nutrition = recode(nutrition, !!!ind_feature_map),
+    PhysAct = recode(PhysAct, !!!ind_feature_map),
+    currentSmoker = recode(currentSmoker, !!!ind_feature_map),
+    alc = recode(alc, !!!ind_feature_map)
+  )
+
+
+```
+
+```{r}
+jhs_std <- read.csv('../../data_processed/JHS/jhs_std.csv')
+
+analysis_feature <- c('cvd_10y_HF', 'cvd_10y_noHF', 'nSES', 'nFavFood', 'nPhysFac', 'nRS',
+                      'FamIncome', 'nutrition', 'PhysAct', 'currentSmoker', 'alc',
+                      'age', 'gender', 'Diabetes', 'hdl', 'totchol', 'sbp')
+
+jhs_std <- jhs_std %>%
+  select(analysis_feature) %>%
+  mutate(Diabetes = as.factor(Diabetes)) %>%
+  mutate( # recode 
+     nutrition = recode(nutrition, !!!ind_feature_map),
+    PhysAct = recode(PhysAct, !!!ind_feature_map),
+    currentSmoker = recode(currentSmoker, !!!ind_feature_map),
+    alc = recode(alc, !!!ind_feature_map)
+  )
+```
+
+```{r}
+named_datasets <- list(mesa = mesa_std, jhs = jhs_std)
+names(named_datasets) <- c("mesa","jhs")
+```
+
+## Run test
+
+```{r}
+n_boot <- 1000
+set.seed(123)
+
+mod_report_df_boot <- data.frame(
+  boot = numeric(),
+  Data = character(),
+  Y = character(),
+  X = character(),
+  Mo = character(),
+  X_coef = numeric(),
+  moderator_coef = numeric(),
+  interaction_coef = numeric(),
+  stringsAsFactors = FALSE 
+)
+
+for (i in seq_along(all_combos)) {
+  
+  print(i)  
+  combo <- all_combos[[i]]
+  
+  # define the fomula
+  data_name = combo$data
+  data <- named_datasets[[data_name]]
+  
+  Y_name <- combo$Y
+  X_name <- combo$X
+  M_name <- combo$M
+  Z <- combo$covariates
+  
+  model_vars <- c(X_name, M_name, Z, paste(X_name, M_name, sep=":"))
+  formula_string <- paste(paste(Y_name), "~", paste(model_vars, collapse=" + "))
+  formula <- as.formula(formula_string)
+  
+  for (j in 1:n_boot) {
+    # Resample 
+    indices <- sample(1:nrow(data), replace = TRUE)
+    boot_data <- data[indices, ]
+    
+    # fit model
+    interact_mod <- glm(formula = formula, data = boot_data, family = binomial())
+    summary_model <- summary(interact_mod)
+  
+    # store the result
+    coefficients <- summary_model$coefficients
+    
+    # X term
+    X_term <- coefficients[which(rownames(coefficients) == X_name), ]
+    X_coefficient <- X_term["Estimate"]
+  
+    # Moderator term
+    moderator_term <- coefficients[which(rownames(coefficients) == M_name), ]
+    moderator_coefficient <- moderator_term["Estimate"]
+    
+    # Interaction term
+    interaction_term <- coefficients[nrow(coefficients), ]
+    interaction_coefficient <- interaction_term["Estimate"]
+    
+    new_df <- data.frame(
+                boot = j,
+                Data = data_name,
+                Y = Y_name,
+                X = X_name,
+                Mo = M_name,
+                X_coef = X_coefficient,
+                moderator_coef = moderator_coefficient,
+                interaction_coef = interaction_coefficient,
+                stringsAsFactors = FALSE 
+              )
+  
+    mod_report_df_boot <- rbind(mod_report_df_boot, new_df)
+  }
+  
+}
+
+```
+
+
+```{r}
+write.csv(mod_report_df_boot, "../../results/reordered_results/moderation/mod_report_df_boot.csv", row.names = FALSE)
+```
+
+### summarize mediation result 
+
+```{r}
+boot_summarized <- mod_report_df_boot %>%
+  group_by(Data, Y, X, Mo) %>%
+  summarise(X_coef_mean = mean(X_coef),
+            X_coef_ci_lwr = quantile(X_coef, 0.025),
+            X_coef_ci_upr = quantile(X_coef, 0.975),
+            moderator_coef_mean = mean(moderator_coef),
+            moderator_coef_ci_lwr = quantile(moderator_coef, 0.025),
+            moderator_coef_ci_upr = quantile(moderator_coef, 0.975),
+            interaction_coef_mean = mean(interaction_coef),
+            interaction_coef_ci_lwr = quantile(interaction_coef, 0.025),
+            interaction_coef_ci_upr = quantile(interaction_coef, 0.975)
+            )
+
+write.csv(boot_summarized, "../../results/reordered_results/moderation/mod_boot_summarized.csv", row.names = FALSE)
+```
+
+```{r}
+mod_boot_sig <- boot_summarized %>%
+  filter(interaction_coef_ci_lwr*interaction_coef_ci_upr > 0)
+
+write.csv(mod_boot_sig, "../../results/reordered_results/moderation/mod_boot_sig.csv", row.names = FALSE)
+```
