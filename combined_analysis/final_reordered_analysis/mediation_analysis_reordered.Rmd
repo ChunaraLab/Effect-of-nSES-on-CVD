@@ -221,7 +221,14 @@ write.csv(boot_summarized, "../../results/reordered_results/mediation/med_boot_s
 
 ```{r}
 med_boot_sig <- boot_summarized %>%
-  filter(b2_b4_ci_lwr*b2_b4_ci_upr > 0)
+  filter(b2_b4_ci_lwr*b2_b4_ci_upr > 0) %>%
+  mutate(
+    TotalEffect_b1 = sprintf("%.3f [%.3f, %.3f]", b1_mean, b1_ci_lwr, b1_ci_upr),
+    b2 = sprintf("%.3f [%.3f, %.3f]", b2_mean, b2_ci_lwr, b2_ci_upr),
+    DirectEffect_b3 = sprintf("%.3f [%.3f, %.3f]", b3_mean, b3_ci_lwr, b3_ci_upr),
+    b4 = sprintf("%.3f [%.3f, %.3f]", b4_mean, b4_ci_lwr, b4_ci_upr),
+    IndirectEffect_b2_b4 = sprintf("%.3f [%.3f, %.3f]", b2_b4_mean, b2_b4_ci_lwr, b2_b4_ci_upr)
+  )
 
 write.csv(med_boot_sig, "../../results/reordered_results/mediation/med_boot_sig.csv", row.names = FALSE)
 ```

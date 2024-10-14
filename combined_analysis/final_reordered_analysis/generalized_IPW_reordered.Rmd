@@ -285,7 +285,10 @@ boot_summarized <- report_df_boot %>%
   summarise(intercept = mean(intercept),
             X_coef_mean = mean(X_coef),
             X_ci_lwr = quantile(X_coef, 0.025),
-            X_ci_upr = quantile(X_coef, 0.975))
+            X_ci_upr = quantile(X_coef, 0.975)) %>%
+  mutate(
+    X_coef = sprintf("%.3f [%.3f, %.3f]", X_coef_mean, X_ci_lwr, X_ci_upr),
+    )
 ```
 ```{r}
 write.csv(boot_summarized, "../../results/reordered_results/generalized_ipw/boot_summarized.csv", row.names = FALSE)

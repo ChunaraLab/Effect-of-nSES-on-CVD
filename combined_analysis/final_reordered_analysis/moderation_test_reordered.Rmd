@@ -180,7 +180,12 @@ write.csv(boot_summarized, "../../results/reordered_results/moderation/mod_boot_
 
 ```{r}
 mod_boot_sig <- boot_summarized %>%
-  filter(interaction_coef_ci_lwr*interaction_coef_ci_upr > 0)
+  filter(interaction_coef_ci_lwr*interaction_coef_ci_upr > 0) %>%
+  mutate(
+    X_coef = sprintf("%.3f [%.3f, %.3f]", X_coef_mean, X_coef_ci_lwr, X_coef_ci_upr),
+    moderator_coef = sprintf("%.3f [%.3f, %.3f]", moderator_coef_mean, moderator_coef_ci_lwr, moderator_coef_ci_upr),
+    interaction_coef = sprintf("%.3f [%.3f, %.3f]", interaction_coef_mean, interaction_coef_ci_lwr, interaction_coef_ci_upr)
+    )
 
 write.csv(mod_boot_sig, "../../results/reordered_results/moderation/mod_boot_sig.csv", row.names = FALSE)
 ```
