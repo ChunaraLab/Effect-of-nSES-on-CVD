@@ -36,9 +36,6 @@ all_combos <- readRDS("all_combos.rds")
 all_combos <- all_combos[seq(1, length(all_combos), by = 5)]
 ```
 
-```{r}
-ind_feature_map <- c('0' = 1, '1' = 2, '2' = 3)
-```
 
 ```{r}
 mesa_std <- read.csv('../../data_processed/MESA/mesa_std.csv')
@@ -50,16 +47,10 @@ analysis_feature <- c('cvd_10y_HF', 'cvd_10y_noHF', 'nSES', 'nFavFood', 'nPhysFa
 
 mesa_std <- mesa_std %>%
   select(analysis_feature) %>%
-  mutate(# # treat ind behavirol variables as conitnuous 
+  mutate( 
     Diabetes = as.factor(Diabetes),
          site = as.factor(site),
-         race = as.factor(race)) %>%
-  mutate( # recode to avoid 0
-    nutrition = recode(nutrition, !!!ind_feature_map),
-    PhysAct = recode(PhysAct, !!!ind_feature_map),
-    currentSmoker = recode(currentSmoker, !!!ind_feature_map),
-    alc = recode(alc, !!!ind_feature_map)
-  )
+         race = as.factor(race)) 
 
 ```
 
@@ -72,14 +63,8 @@ analysis_feature <- c('cvd_10y_HF', 'cvd_10y_noHF', 'nSES', 'nFavFood', 'nPhysFa
 
 jhs_std <- jhs_std %>%
   select(analysis_feature) %>%
-  mutate(# # treat ind behavirol variables as conitnuous
-    Diabetes = as.factor(Diabetes)) %>%
-  mutate( # recode to avoid 0
-    nutrition = recode(nutrition, !!!ind_feature_map),
-    PhysAct = recode(PhysAct, !!!ind_feature_map),
-    currentSmoker = recode(currentSmoker, !!!ind_feature_map),
-    alc = recode(alc, !!!ind_feature_map)
-  )
+  mutate(
+    Diabetes = as.factor(Diabetes)) 
 ```
 
 ```{r}
