@@ -29,6 +29,8 @@ library(bda) # sobel test
 
 ```{r}
 all_combos <- readRDS("all_combos.rds")
+# only keep all the Y&X combos
+all_combos <- all_combos[seq(1, length(all_combos), by = 5)]
 ```
 
 ```{r}
@@ -96,9 +98,15 @@ names(named_datasets) <- c("mesa", "jhs")
 ## result generation
 
 **Steps:**
-logitY ~ b0 + b1X + bZ + e
-M ~ b0 + b2X + bZ+ e
-logitY ~ b0 + b3X + b4M + bZ + e
+$$
+1. logitY \sim b_0 + b_1X + bZ + e\\
+2. FamIncome    \sim b_0 + b_{21}X + bZ+ e\\
+  nutrition     \sim b_0 + b_{22}X + bZ+ e\\
+  PhysAct       \sim b_0 + b_{23}X + bZ+ e\\
+  currentSmoker \sim b_0 + b_{24}X + bZ+ e\\
+  alc           \sim b_0 + b_{25}X + bZ+ e\\
+3. logitY \sim b0 + b_3X + b_{41}\times FamIncome + b_{42}\times nutrition + b_{43}\times PhysAct + b_{44}\times currentSmoker + b_{45}\times alc + bZ + e
+$$
 
 ### bootstrap to obtain ci
 ```{r, warning=FALSE, message=FALSE}
@@ -110,12 +118,18 @@ med_report_df_boot <- data.frame(
   Data = character(),
   Y = character(),
   X = character(),
-  Me = character(),
   b1 = numeric(),
-  b2 = numeric(),
+  b21 = numeric(),
+  b22 = numeric(),
+  b23 = numeric(),
+  b24 = numeric(),
+  b25 = numeric(),
   b3 = numeric(),
-  b4 = numeric(),
-  b2_b4 = numeric(),
+  b41 = numeric(),
+  b42 = numeric(),
+  b43 = numeric(),
+  b44 = numeric(),
+  b45 = numeric(),
   stringsAsFactors = FALSE 
 )
 
@@ -129,15 +143,24 @@ for (i in seq_along(all_combos)) {
   data <- named_datasets[[data_name]]
   Y_name <- combo$Y
   X_name <- combo$X
-  M_name <- combo$M
   Z <- combo$covariates
   
   # generate formula for mediation test
   formula_X_to_Y <- paste(Y_name, "~", X_name, "+", paste(Z, collapse=" + "))
   formula_X_to_Y <- as.formula(formula_X_to_Y)
-  formula_X_to_M <- paste(M_name, "~", X_name, "+", paste(Z, collapse=" + "))
-  formula_X_to_M <- as.formula(formula_X_to_M)
-  formula_XM_to_Y <- paste(Y_name, "~", X_name, "+", M_name, "+", paste(Z, collapse=" + "))
+  
+  formula_X_to_M1 <- paste("FamIncome", "~", X_name, "+", paste(Z, collapse=" + "))
+  formula_X_to_M1 <- as.formula(formula_X_to_M1)
+  formula_X_to_M2 <- paste("nutrition", "~", X_name, "+", paste(Z, collapse=" + "))
+  formula_X_to_M2 <- as.formula(formula_X_to_M2)
+  formula_X_to_M3 <- paste("PhysAct", "~", X_name, "+", paste(Z, collapse=" + "))
+  formula_X_to_M3 <- as.formula(formula_X_to_M3)
+  formula_X_to_M4 <- paste("currentSmoker", "~", X_name, "+", paste(Z, collapse=" + "))
+  formula_X_to_M4 <- as.formula(formula_X_to_M4)
+  formula_X_to_M5 <- paste("alc", "~", X_name, "+", paste(Z, collapse=" + "))
+  formula_X_to_M5 <- as.formula(formula_X_to_M5)
+  
+  formula_XM_to_Y <- paste(Y_name, "~", X_name, "+", "FamIncome", "+","nutrition", "+","PhysAct","+","currentSmoker","+","alc", "+", paste(Z, collapse=" + "))
   formula_XM_to_Y <- as.formula(formula_XM_to_Y)
 
   # Bootstrap to get CIs
@@ -149,12 +172,24 @@ for (i in seq_along(all_combos)) {
     
     # fit the models on the bootstrap sample
     boot_mod_X_to_Y <- glm(formula = formula_X_to_Y, data = boot_data, family = binomial())
-    boot_mod_X_to_M <- glm(formula = formula_X_to_M, data = boot_data)
+    
+    boot_mod_X_to_M1 <- glm(formula = formula_X_to_M1, data = boot_data)
+    boot_mod_X_to_M2 <- glm(formula = formula_X_to_M2, data = boot_data)
+    boot_mod_X_to_M3 <- glm(formula = formula_X_to_M3, data = boot_data)
+    boot_mod_X_to_M4 <- glm(formula = formula_X_to_M4, data = boot_data)
+    boot_mod_X_to_M5 <- glm(formula = formula_X_to_M5, data = boot_data)
+    
     boot_mod_XM_to_Y <- glm(formula = formula_XM_to_Y, data = boot_data, family = binomial())
     
     # Extract coefficients
     boot_coef_X_to_Y <- coef(boot_mod_X_to_Y)
-    boot_coef_X_to_M <- coef(boot_mod_X_to_M)
+    
+    boot_coef_X_to_M1 <- coef(boot_mod_X_to_M1)
+    boot_coef_X_to_M2 <- coef(boot_mod_X_to_M2)
+    boot_coef_X_to_M3 <- coef(boot_mod_X_to_M3)
+    boot_coef_X_to_M4 <- coef(boot_mod_X_to_M4)
+    boot_coef_X_to_M5 <- coef(boot_mod_X_to_M5)
+    
     boot_coef_XM_to_Y <- coef(boot_mod_XM_to_Y)
     
     new_df <- data.frame(
@@ -162,12 +197,22 @@ for (i in seq_along(all_combos)) {
                 Data = data_name,
                 Y = Y_name,
                 X = X_name,
-                Me = M_name,
                 b1 = boot_coef_X_to_Y[X_name],
-                b2 = boot_coef_X_to_M[X_name],
+                
+                b21 = boot_coef_X_to_M1[X_name],
+                b22 = boot_coef_X_to_M2[X_name],
+                b23 = boot_coef_X_to_M3[X_name],
+                b24 = boot_coef_X_to_M4[X_name],
+                b25 = boot_coef_X_to_M5[X_name],
+                
                 b3 = boot_coef_XM_to_Y[X_name],
-                b4 = boot_coef_XM_to_Y[M_name], 
-                b2_b4 = boot_coef_X_to_M[X_name]*boot_coef_XM_to_Y[M_name],
+                
+                b41 = boot_coef_XM_to_Y["FamIncome"], 
+                b42 = boot_coef_XM_to_Y["nutrition"], 
+                b43 = boot_coef_XM_to_Y["PhysAct"],
+                b44 = boot_coef_XM_to_Y["currentSmoker"],
+                b45 = boot_coef_XM_to_Y["alc"],
+                
                 stringsAsFactors = FALSE )
   
     med_report_df_boot <- rbind(med_report_df_boot, new_df)
@@ -184,262 +229,13 @@ write.csv(med_report_df_boot, "../../results/reordered_results/mediation/med_rep
 ### summarize mediation result 
 
 ```{r}
-boot_summarized <- med_report_df_boot %>%
-  group_by(Data, Y, X, Me) %>%
-  summarise(b1_mean = mean(b1),
-            b1_ci_lwr = quantile(b1, 0.025),
-            b1_ci_upr = quantile(b1, 0.975),
-            b2_mean = mean(b2),
-            b2_ci_lwr = quantile(b2, 0.025),
-            b2_ci_upr = quantile(b2, 0.975),
-            b3_mean = mean(b3),
-            b3_ci_lwr = quantile(b3, 0.025),
-            b3_ci_upr = quantile(b3, 0.975),
-            b4_mean = mean(b4),
-            b4_ci_lwr = quantile(b4, 0.025),
-            b4_ci_upr = quantile(b4, 0.975),
-            b2_b4_mean = mean(b2_b4),
-            b2_b4_ci_lwr = quantile(b2_b4, 0.025),
-            b2_b4_ci_upr = quantile(b2_b4, 0.975))
-
-write.csv(boot_summarized, "../../results/reordered_results/mediation/med_boot_summarized.csv", row.names = FALSE)
-```
-
-```{r}
-med_boot_sig <- boot_summarized %>%
-  filter(b2_b4_ci_lwr*b2_b4_ci_upr > 0) %>%
-  mutate(
-    TotalEffect_b1 = sprintf("%.3f [%.3f, %.3f]", b1_mean, b1_ci_lwr, b1_ci_upr),
-    b2 = sprintf("%.3f [%.3f, %.3f]", b2_mean, b2_ci_lwr, b2_ci_upr),
-    DirectEffect_b3 = sprintf("%.3f [%.3f, %.3f]", b3_mean, b3_ci_lwr, b3_ci_upr),
-    b4 = sprintf("%.3f [%.3f, %.3f]", b4_mean, b4_ci_lwr, b4_ci_upr),
-    IndirectEffect_b2_b4 = sprintf("%.3f [%.3f, %.3f]", b2_b4_mean, b2_b4_ci_lwr, b2_b4_ci_upr)
-  )
-
-write.csv(med_boot_sig, "../../results/reordered_results/mediation/med_boot_sig.csv", row.names = FALSE)
-```
-
-
-### multiple mediator models
-
-combine the multiple mediators identified in med_boot_sig
-
-1. logitY ~ b0 + b1X + bZ + e
-2. Me_1 ~ b0 + b21X + bZ+ e
-  Me_2 ~ b0 + b22X + bZ+ e
-  Me_3 ~ b0 + b23X + bZ+ e
-3. logitY ~ b0 + b3X + b41Me_1 + b42Me_2 + b43Me_3 + bZ + e
-
-
-#### JHS nFavFood -> FamIncome, currentSmoker
-```{r, warning=FALSE, message=FALSE}
-jhs_nFavFood_multi <- data.frame(
-  boot = numeric(),
-  b1 = numeric(),
-  b21 = numeric(),
-  b22 = numeric(),
-  b3 = numeric(),
-  b41 = numeric(),
-  b42 = numeric(),
-  stringsAsFactors = FALSE 
-)
-
-# model setting
-data <- jhs_std
-Y_name <- "cvd_10y_HF"
-X_name <- "nFavFood"
-Me_1 <- "FamIncome"
-Me_2 <- "currentSmoker"
-Z <- c("age","gender","Diabetes", "hdl","totchol","sbp")
-  
-# generate formula for mediation test
-formula_X_to_Y <- paste(Y_name, "~", X_name, "+", paste(Z, collapse=" + "))
-formula_X_to_Y <- as.formula(formula_X_to_Y)
-
-formula_X_to_Me_1 <- paste(Me_1, "~", X_name, "+", paste(Z, collapse=" + "))
-formula_X_to_Me_1 <- as.formula(formula_X_to_Me_1)
-
-formula_X_to_Me_2 <- paste(Me_2, "~", X_name, "+", paste(Z, collapse=" + "))
-formula_X_to_Me_2 <- as.formula(formula_X_to_Me_2)
-
-formula_XM_to_Y <- paste(Y_name, "~", X_name, "+", Me_1, "+", Me_2, "+", paste(Z, collapse=" + "))
-formula_XM_to_Y <- as.formula(formula_XM_to_Y)
-
-# Bootstrap to get CIs
-n_boot <- 1000
-set.seed(123)
-
-for (j in 1:n_boot) {
-    # Resample 
-    indices <- sample(1:nrow(data), replace = TRUE)
-    boot_data <- data[indices, ]
-    
-    # fit the models on the bootstrap sample
-    boot_mod_X_to_Y <- glm(formula = formula_X_to_Y, data = boot_data, family = binomial())
-    boot_mod_X_to_Me_1 <- glm(formula = formula_X_to_Me_1, data = boot_data)
-    boot_mod_X_to_Me_2 <- glm(formula = formula_X_to_Me_2, data = boot_data)
-    boot_mod_XM_to_Y <- glm(formula = formula_XM_to_Y, data = boot_data, family = binomial())
-    
-    # Extract coefficients
-    boot_coef_X_to_Y <- coef(boot_mod_X_to_Y)
-    boot_coef_X_to_Me_1 <- coef(boot_mod_X_to_Me_1)
-    boot_coef_X_to_Me_2 <- coef(boot_mod_X_to_Me_2)
-    boot_coef_XM_to_Y <- coef(boot_mod_XM_to_Y)
-    
-    new_df <- data.frame(
-                boot = j,
-                b1 = boot_coef_X_to_Y[X_name],
-                b21 = boot_coef_X_to_Me_1[X_name],
-                b22 = boot_coef_X_to_Me_2[X_name],
-                b3 = boot_coef_XM_to_Y[X_name],
-                b41 = boot_coef_XM_to_Y[Me_1],
-                b42 = boot_coef_XM_to_Y[Me_2],
-                stringsAsFactors = FALSE )
-  
-    jhs_nFavFood_multi <- rbind(jhs_nFavFood_multi, new_df)
-}
-
-write.csv(jhs_nFavFood_multi, "../../results/reordered_results/mediation/multi_mediator/jhs_nFavFood_multi.csv", row.names = FALSE)
-```
-
-
-```{r}
-jhs_nFavFood_multi_sum <- jhs_nFavFood_multi %>%
-  mutate(b_21_41 = b21*b41,
-         b_22_42 = b22*b42) %>%
-  summarise(b1_mean = mean(b1),
-           b1_ci_lwr = quantile(b1, 0.025),
-           b1_ci_upr = quantile(b1, 0.975),
-            
-            b21_mean = mean(b21),
-            b21_ci_lwr = quantile(b21, 0.025),
-            b21_ci_upr = quantile(b21, 0.975),
-            
-            b22_mean = mean(b22),
-            b22_ci_lwr = quantile(b22, 0.025),
-            b22_ci_upr = quantile(b22, 0.975),
-            
-            b3_mean = mean(b3),
-            b3_ci_lwr = quantile(b3, 0.025),
-            b3_ci_upr = quantile(b3, 0.975),
-            
-            b41_mean = mean(b41),
-            b41_ci_lwr = quantile(b41, 0.025),
-            b41_ci_upr = quantile(b41, 0.975),
-           
-           b42_mean = mean(b42),
-            b42_ci_lwr = quantile(b42, 0.025),
-            b42_ci_upr = quantile(b42, 0.975),
-         
-            b_21_41_mean = mean(b_21_41),
-            b_21_41_ci_lwr = quantile(b_21_41, 0.025),
-            b_21_41_ci_upr = quantile(b_21_41, 0.975),
-           
-           b_22_42_mean = mean(b_22_42),
-            b_22_42_ci_lwr = quantile(b_22_42, 0.025),
-            b_22_42_ci_upr = quantile(b_22_42, 0.975)) %>%
-  mutate(
-    TotalEffect_b1 = sprintf("%.3f [%.3f, %.3f]", b1_mean, b1_ci_lwr, b1_ci_upr),
-    b21 = sprintf("%.3f [%.3f, %.3f]", b21_mean, b21_ci_lwr, b21_ci_upr),
-    b22 = sprintf("%.3f [%.3f, %.3f]", b22_mean, b22_ci_lwr, b22_ci_upr),
-    DirectEffect_b3 = sprintf("%.3f [%.3f, %.3f]", b3_mean, b3_ci_lwr, b3_ci_upr),
-    b41 = sprintf("%.3f [%.3f, %.3f]", b41_mean, b41_ci_lwr, b41_ci_upr),
-    b42 = sprintf("%.3f [%.3f, %.3f]", b42_mean, b42_ci_lwr, b42_ci_upr),
-    IndirectEffect_b21_b41 = sprintf("%.3f [%.3f, %.3f]", b_21_41_mean, b_21_41_ci_lwr, b_21_41_ci_upr),
-    IndirectEffect_b22_b42 = sprintf("%.3f [%.3f, %.3f]", b_22_42_mean, b_22_42_ci_lwr, b_22_42_ci_upr)
-  )
-
-write.csv(jhs_nFavFood_multi_sum, "../../results/reordered_results/mediation/multi_mediator/jhs_nFavFood_multi_sum.csv", row.names = FALSE) 
-```
-
-#### JHS nRS -> FamIncome, PhysAct, currentSmoker
-
-```{r, warning=FALSE, message=FALSE}
-jhs_nRS_multi <- data.frame(
-  boot = numeric(),
-  b1 = numeric(),
-  b21 = numeric(),
-  b22 = numeric(),
-  b23 = numeric(),
-  b3 = numeric(),
-  b41 = numeric(),
-  b42 = numeric(),
-  b43 = numeric(),
-  stringsAsFactors = FALSE 
-)
-
-# model setting
-data <- jhs_std
-Y_name <- "cvd_10y_HF"
-X_name <- "nRS"
-Me_1 <- "FamIncome"
-Me_2 <- "PhysAct"
-Me_3 <- "currentSmoker"
-Z <- c("age","gender","Diabetes", "hdl","totchol","sbp")
-  
-# generate formula for mediation test
-formula_X_to_Y <- paste(Y_name, "~", X_name, "+", paste(Z, collapse=" + "))
-formula_X_to_Y <- as.formula(formula_X_to_Y)
-
-formula_X_to_Me_1 <- paste(Me_1, "~", X_name, "+", paste(Z, collapse=" + "))
-formula_X_to_Me_1 <- as.formula(formula_X_to_Me_1)
-
-formula_X_to_Me_2 <- paste(Me_2, "~", X_name, "+", paste(Z, collapse=" + "))
-formula_X_to_Me_2 <- as.formula(formula_X_to_Me_2)
-
-formula_X_to_Me_3 <- paste(Me_3, "~", X_name, "+", paste(Z, collapse=" + "))
-formula_X_to_Me_3 <- as.formula(formula_X_to_Me_3)
-
-formula_XM_to_Y <- paste(Y_name, "~", X_name, "+", Me_1, "+", Me_2, "+", Me_3, "+", paste(Z, collapse=" + "))
-formula_XM_to_Y <- as.formula(formula_XM_to_Y)
-
-# Bootstrap to get CIs
-n_boot <- 1000
-set.seed(123)
-
-for (j in 1:n_boot) {
-    # Resample 
-    indices <- sample(1:nrow(data), replace = TRUE)
-    boot_data <- data[indices, ]
-    
-    # fit the models on the bootstrap sample
-    boot_mod_X_to_Y <- glm(formula = formula_X_to_Y, data = boot_data, family = binomial())
-    boot_mod_X_to_Me_1 <- glm(formula = formula_X_to_Me_1, data = boot_data)
-    boot_mod_X_to_Me_2 <- glm(formula = formula_X_to_Me_2, data = boot_data)
-    boot_mod_X_to_Me_3 <- glm(formula = formula_X_to_Me_3, data = boot_data)
-    boot_mod_XM_to_Y <- glm(formula = formula_XM_to_Y, data = boot_data, family = binomial())
-    
-    # Extract coefficients
-    boot_coef_X_to_Y <- coef(boot_mod_X_to_Y)
-    boot_coef_X_to_Me_1 <- coef(boot_mod_X_to_Me_1)
-    boot_coef_X_to_Me_2 <- coef(boot_mod_X_to_Me_2)
-    boot_coef_X_to_Me_3 <- coef(boot_mod_X_to_Me_3)
-    boot_coef_XM_to_Y <- coef(boot_mod_XM_to_Y)
-    
-    new_df <- data.frame(
-                boot = j,
-                b1 = boot_coef_X_to_Y[X_name],
-                b21 = boot_coef_X_to_Me_1[X_name],
-                b22 = boot_coef_X_to_Me_2[X_name],
-                b23 = boot_coef_X_to_Me_3[X_name],
-                b3 = boot_coef_XM_to_Y[X_name],
-                b41 = boot_coef_XM_to_Y[Me_1],
-                b42 = boot_coef_XM_to_Y[Me_2],
-                b43 = boot_coef_XM_to_Y[Me_3],
-                stringsAsFactors = FALSE )
-  
-    jhs_nRS_multi <- rbind(jhs_nRS_multi, new_df)
-}
-
-write.csv(jhs_nRS_multi, "../../results/reordered_results/mediation/multi_mediator/jhs_nRS_multi.csv", row.names = FALSE) 
-```
-
-
-```{r}
-jhs_nRS_multi_sum <- jhs_nRS_multi %>%
+med_report_df_boot_sum <- med_report_df_boot %>%
   mutate(b_21_41 = b21*b41,
          b_22_42 = b22*b42,
-         b_23_43 = b23*b43) %>%
+         b_23_43 = b23*b43,
+         b_24_44 = b24*b44,
+         b_25_45 = b25*b45) %>%
+  group_by(Data, Y, X) %>%
   summarise(b1_mean = mean(b1),
            b1_ci_lwr = quantile(b1, 0.025),
            b1_ci_upr = quantile(b1, 0.975),
@@ -453,9 +249,17 @@ jhs_nRS_multi_sum <- jhs_nRS_multi %>%
             b22_ci_upr = quantile(b22, 0.975),
            
            b23_mean = mean(b23),
-           b23_ci_lwr = quantile(b23, 0.025),
+            b23_ci_lwr = quantile(b23, 0.025),
             b23_ci_upr = quantile(b23, 0.975),
             
+           b24_mean = mean(b24),
+            b24_ci_lwr = quantile(b24, 0.025),
+            b24_ci_upr = quantile(b24, 0.975),
+           
+           b25_mean = mean(b25),
+            b25_ci_lwr = quantile(b25, 0.025),
+            b25_ci_upr = quantile(b25, 0.975),
+           
             b3_mean = mean(b3),
             b3_ci_lwr = quantile(b3, 0.025),
             b3_ci_upr = quantile(b3, 0.975),
@@ -471,6 +275,14 @@ jhs_nRS_multi_sum <- jhs_nRS_multi %>%
            b43_mean = mean(b43),
             b43_ci_lwr = quantile(b43, 0.025),
             b43_ci_upr = quantile(b43, 0.975),
+           
+           b44_mean = mean(b44),
+            b44_ci_lwr = quantile(b44, 0.025),
+            b44_ci_upr = quantile(b44, 0.975),
+           
+           b45_mean = mean(b45),
+            b45_ci_lwr = quantile(b45, 0.025),
+            b45_ci_upr = quantile(b45, 0.975),
          
             b_21_41_mean = mean(b_21_41),
             b_21_41_ci_lwr = quantile(b_21_41, 0.025),
@@ -482,455 +294,51 @@ jhs_nRS_multi_sum <- jhs_nRS_multi %>%
            
            b_23_43_mean = mean(b_23_43),
             b_23_43_ci_lwr = quantile(b_23_43, 0.025),
-            b_23_43_ci_upr = quantile(b_23_43, 0.975)) %>%
+            b_23_43_ci_upr = quantile(b_23_43, 0.975),
+           
+           b_24_44_mean = mean(b_24_44),
+            b_24_44_ci_lwr = quantile(b_24_44, 0.025),
+            b_24_44_ci_upr = quantile(b_24_44, 0.975),
+           
+           b_25_45_mean = mean(b_25_45),
+            b_25_45_ci_lwr = quantile(b_25_45, 0.025),
+            b_25_45_ci_upr = quantile(b_25_45, 0.975)) %>%
   mutate(
     TotalEffect_b1 = sprintf("%.3f [%.3f, %.3f]", b1_mean, b1_ci_lwr, b1_ci_upr),
     b21 = sprintf("%.3f [%.3f, %.3f]", b21_mean, b21_ci_lwr, b21_ci_upr),
     b22 = sprintf("%.3f [%.3f, %.3f]", b22_mean, b22_ci_lwr, b22_ci_upr),
     b23 = sprintf("%.3f [%.3f, %.3f]", b23_mean, b23_ci_lwr, b23_ci_upr),
+    b24 = sprintf("%.3f [%.3f, %.3f]", b24_mean, b24_ci_lwr, b24_ci_upr),
+    b25 = sprintf("%.3f [%.3f, %.3f]", b25_mean, b25_ci_lwr, b25_ci_upr),
     DirectEffect_b3 = sprintf("%.3f [%.3f, %.3f]", b3_mean, b3_ci_lwr, b3_ci_upr),
     b41 = sprintf("%.3f [%.3f, %.3f]", b41_mean, b41_ci_lwr, b41_ci_upr),
     b42 = sprintf("%.3f [%.3f, %.3f]", b42_mean, b42_ci_lwr, b42_ci_upr),
     b43 = sprintf("%.3f [%.3f, %.3f]", b43_mean, b43_ci_lwr, b43_ci_upr),
+    b44 = sprintf("%.3f [%.3f, %.3f]", b44_mean, b44_ci_lwr, b44_ci_upr),
+    b45 = sprintf("%.3f [%.3f, %.3f]", b45_mean, b45_ci_lwr, b45_ci_upr),
     IndirectEffect_b21_b41 = sprintf("%.3f [%.3f, %.3f]", b_21_41_mean, b_21_41_ci_lwr, b_21_41_ci_upr),
     IndirectEffect_b22_b42 = sprintf("%.3f [%.3f, %.3f]", b_22_42_mean, b_22_42_ci_lwr, b_22_42_ci_upr),
-    IndirectEffect_b23_b43 = sprintf("%.3f [%.3f, %.3f]", b_23_43_mean, b_23_43_ci_lwr, b_23_43_ci_upr)
+    IndirectEffect_b23_b43 = sprintf("%.3f [%.3f, %.3f]", b_23_43_mean, b_23_43_ci_lwr, b_23_43_ci_upr),
+    IndirectEffect_b24_b44 = sprintf("%.3f [%.3f, %.3f]", b_24_44_mean, b_24_44_ci_lwr, b_24_44_ci_upr),
+    IndirectEffect_b25_b45 = sprintf("%.3f [%.3f, %.3f]", b_25_45_mean, b_25_45_ci_lwr, b_25_45_ci_upr)
   )
 
-write.csv(jhs_nRS_multi_sum, "../../results/reordered_results/mediation/multi_mediator/jhs_nRS_multi_sum.csv", row.names = FALSE) 
+write.csv(med_report_df_boot_sum, "../../results/reordered_results/mediation/med_report_df_boot_sum.csv", row.names = FALSE) 
 ```
 
-
-#### JHS nSES -> FamIncome, PhysAct, currentSmoker
-```{r, warning=FALSE, message=FALSE}
-jhs_nSES_multi <- data.frame(
-  boot = numeric(),
-  b1 = numeric(),
-  b21 = numeric(),
-  b22 = numeric(),
-  b23 = numeric(),
-  b3 = numeric(),
-  b41 = numeric(),
-  b42 = numeric(),
-  b43 = numeric(),
-  stringsAsFactors = FALSE 
-)
-
-# model setting
-data <- jhs_std
-Y_name <- "cvd_10y_HF"
-X_name <- "nSES"
-Me_1 <- "FamIncome"
-Me_2 <- "PhysAct"
-Me_3 <- "currentSmoker"
-Z <- c("age","gender","Diabetes", "hdl","totchol","sbp")
-  
-# generate formula for mediation test
-formula_X_to_Y <- paste(Y_name, "~", X_name, "+", paste(Z, collapse=" + "))
-formula_X_to_Y <- as.formula(formula_X_to_Y)
-
-formula_X_to_Me_1 <- paste(Me_1, "~", X_name, "+", paste(Z, collapse=" + "))
-formula_X_to_Me_1 <- as.formula(formula_X_to_Me_1)
-
-formula_X_to_Me_2 <- paste(Me_2, "~", X_name, "+", paste(Z, collapse=" + "))
-formula_X_to_Me_2 <- as.formula(formula_X_to_Me_2)
-
-formula_X_to_Me_3 <- paste(Me_3, "~", X_name, "+", paste(Z, collapse=" + "))
-formula_X_to_Me_3 <- as.formula(formula_X_to_Me_3)
-
-formula_XM_to_Y <- paste(Y_name, "~", X_name, "+", Me_1, "+", Me_2, "+", Me_3, "+", paste(Z, collapse=" + "))
-formula_XM_to_Y <- as.formula(formula_XM_to_Y)
-
-# Bootstrap to get CIs
-n_boot <- 1000
-set.seed(123)
-
-for (j in 1:n_boot) {
-    # Resample 
-    indices <- sample(1:nrow(data), replace = TRUE)
-    boot_data <- data[indices, ]
-    
-    # fit the models on the bootstrap sample
-    boot_mod_X_to_Y <- glm(formula = formula_X_to_Y, data = boot_data, family = binomial())
-    boot_mod_X_to_Me_1 <- glm(formula = formula_X_to_Me_1, data = boot_data)
-    boot_mod_X_to_Me_2 <- glm(formula = formula_X_to_Me_2, data = boot_data)
-    boot_mod_X_to_Me_3 <- glm(formula = formula_X_to_Me_3, data = boot_data)
-    boot_mod_XM_to_Y <- glm(formula = formula_XM_to_Y, data = boot_data, family = binomial())
-    
-    # Extract coefficients
-    boot_coef_X_to_Y <- coef(boot_mod_X_to_Y)
-    boot_coef_X_to_Me_1 <- coef(boot_mod_X_to_Me_1)
-    boot_coef_X_to_Me_2 <- coef(boot_mod_X_to_Me_2)
-    boot_coef_X_to_Me_3 <- coef(boot_mod_X_to_Me_3)
-    boot_coef_XM_to_Y <- coef(boot_mod_XM_to_Y)
-    
-    new_df <- data.frame(
-                boot = j,
-                b1 = boot_coef_X_to_Y[X_name],
-                b21 = boot_coef_X_to_Me_1[X_name],
-                b22 = boot_coef_X_to_Me_2[X_name],
-                b23 = boot_coef_X_to_Me_3[X_name],
-                b3 = boot_coef_XM_to_Y[X_name],
-                b41 = boot_coef_XM_to_Y[Me_1],
-                b42 = boot_coef_XM_to_Y[Me_2],
-                b43 = boot_coef_XM_to_Y[Me_3],
-                stringsAsFactors = FALSE )
-  
-    jhs_nSES_multi <- rbind(jhs_nSES_multi, new_df)
-}
-
-write.csv(jhs_nSES_multi, "../../results/reordered_results/mediation/multi_mediator/jhs_nSES_multi.csv", row.names = FALSE) 
-```
-
-
+significant indirect effects
 ```{r}
-jhs_nSES_multi_sum <- jhs_nSES_multi %>%
-  mutate(b_21_41 = b21*b41,
-         b_22_42 = b22*b42,
-         b_23_43 = b23*b43) %>%
-  summarise(b1_mean = mean(b1),
-           b1_ci_lwr = quantile(b1, 0.025),
-           b1_ci_upr = quantile(b1, 0.975),
-            
-            b21_mean = mean(b21),
-            b21_ci_lwr = quantile(b21, 0.025),
-            b21_ci_upr = quantile(b21, 0.975),
-            
-            b22_mean = mean(b22),
-            b22_ci_lwr = quantile(b22, 0.025),
-            b22_ci_upr = quantile(b22, 0.975),
-           
-           b23_mean = mean(b23),
-           b23_ci_lwr = quantile(b23, 0.025),
-            b23_ci_upr = quantile(b23, 0.975),
-            
-            b3_mean = mean(b3),
-            b3_ci_lwr = quantile(b3, 0.025),
-            b3_ci_upr = quantile(b3, 0.975),
-            
-            b41_mean = mean(b41),
-            b41_ci_lwr = quantile(b41, 0.025),
-            b41_ci_upr = quantile(b41, 0.975),
-           
-           b42_mean = mean(b42),
-            b42_ci_lwr = quantile(b42, 0.025),
-            b42_ci_upr = quantile(b42, 0.975),
-           
-           b43_mean = mean(b43),
-            b43_ci_lwr = quantile(b43, 0.025),
-            b43_ci_upr = quantile(b43, 0.975),
-         
-            b_21_41_mean = mean(b_21_41),
-            b_21_41_ci_lwr = quantile(b_21_41, 0.025),
-            b_21_41_ci_upr = quantile(b_21_41, 0.975),
-           
-           b_22_42_mean = mean(b_22_42),
-            b_22_42_ci_lwr = quantile(b_22_42, 0.025),
-            b_22_42_ci_upr = quantile(b_22_42, 0.975),
-           
-           b_23_43_mean = mean(b_23_43),
-            b_23_43_ci_lwr = quantile(b_23_43, 0.025),
-            b_23_43_ci_upr = quantile(b_23_43, 0.975)) %>%
-  mutate(
-    TotalEffect_b1 = sprintf("%.3f [%.3f, %.3f]", b1_mean, b1_ci_lwr, b1_ci_upr),
-    b21 = sprintf("%.3f [%.3f, %.3f]", b21_mean, b21_ci_lwr, b21_ci_upr),
-    b22 = sprintf("%.3f [%.3f, %.3f]", b22_mean, b22_ci_lwr, b22_ci_upr),
-    b23 = sprintf("%.3f [%.3f, %.3f]", b23_mean, b23_ci_lwr, b23_ci_upr),
-    DirectEffect_b3 = sprintf("%.3f [%.3f, %.3f]", b3_mean, b3_ci_lwr, b3_ci_upr),
-    b41 = sprintf("%.3f [%.3f, %.3f]", b41_mean, b41_ci_lwr, b41_ci_upr),
-    b42 = sprintf("%.3f [%.3f, %.3f]", b42_mean, b42_ci_lwr, b42_ci_upr),
-    b43 = sprintf("%.3f [%.3f, %.3f]", b43_mean, b43_ci_lwr, b43_ci_upr),
-    IndirectEffect_b21_b41 = sprintf("%.3f [%.3f, %.3f]", b_21_41_mean, b_21_41_ci_lwr, b_21_41_ci_upr),
-    IndirectEffect_b22_b42 = sprintf("%.3f [%.3f, %.3f]", b_22_42_mean, b_22_42_ci_lwr, b_22_42_ci_upr),
-    IndirectEffect_b23_b43 = sprintf("%.3f [%.3f, %.3f]", b_23_43_mean, b_23_43_ci_lwr, b_23_43_ci_upr)
-  )
+med_report_df_boot_sum_sig <- med_report_df_boot_sum %>%
+  filter((b_21_41_ci_lwr*b_21_41_ci_upr > 0) | (b_22_42_ci_lwr*b_22_42_ci_upr > 0) | (b_23_43_ci_lwr*b_23_43_ci_upr > 0) |
+           (b_24_44_ci_lwr*b_24_44_ci_upr > 0) | (b_25_45_ci_lwr*b_25_45_ci_upr > 0))
 
-write.csv(jhs_nSES_multi_sum, "../../results/reordered_results/mediation/multi_mediator/jhs_nSES_multi_sum.csv", row.names = FALSE) 
-
+write.csv(med_report_df_boot_sum_sig, "../../results/reordered_results/mediation/med_report_df_boot_sum_sig.csv", row.names = FALSE) 
 ```
-
-
 
 
 
 ### plotting
 
-
-### sobel test
-```{r}
-sobel_df <- data.frame(
-  Data = character(),
-  Y = character(),
-  X = character(),
-  mediator = character(),
-  b1 = numeric(),
-  b1_pvalue = numeric(),
-  b2 = numeric(),
-  b2_pvalue = numeric(),
-  b3 = numeric(),
-  b3_pvalue = numeric(),
-  b4 = numeric(),
-  b4_pvalue = numeric(),
-  b2_b4 = numeric(),
-  sobel_pvalue = numeric()
-)
-
-for (combo in all_combos) {
-  
-  # get values
-  data_name = combo$data
-  data <- named_datasets[[data_name]]
-  Y <- combo$Y
-  X <- combo$X
-  M <- combo$M
-  Z <- combo$covariates_final
-  
-  # generate formula
-  ## formula for generating weights
-  formula_ps_no_str <- paste(X, "~ 1")
-  formula_ps_no <- as.formula(formula_ps_no_str)
-  formula_ps_str <- paste(X, "~ ", M, "+" ,paste(Z, collapse=" + "))
-  formula_ps <- as.formula(formula_ps_str)
-  ## formula for mediation test
-  formula_X_to_Y <- paste(Y, "~",X, "+", paste(Z, collapse=" + "))
-  formula_X_to_Y <- as.formula(formula_X_to_Y)
-  formula_X_to_M <- paste(M, "~", X)
-  formula_X_to_M <- as.formula(formula_X_to_M)
-  formula_XM_to_Y <- paste(Y, "~",X, "+", M, "+", paste(Z, collapse=" + "))
-  formula_XM_to_Y <- as.formula(formula_XM_to_Y)
-  
-  # estimate weights
-  denominator = conditional_densities(data, X, formula_ps_no,formula_ps, use_confounders=T)
-  numerator = conditional_densities(data,X, formula_ps_no,formula_ps, use_confounders=F)
-  propensity_density = numerator / denominator
-  threshold <- quantile(propensity_density, 0.99)
-  data <- data[propensity_density <= threshold, ]
-  propensity_density <- propensity_density[propensity_density <= threshold]
-  
-  # run the 3 models
-  
-  ## Y ~ X + Z
-  mod_X_to_Y <- glm(formula = formula_X_to_Y, data = data, family = binomial(), weights = propensity_density)
-  summary_X_to_Y <- summary(mod_X_to_Y)
-  coef_X_to_Y <- summary_X_to_Y$coefficients
-  ## M ~ X
-  mod_X_to_M <- glm(formula = formula_X_to_M, data = data, weights = propensity_density)
-  summary_X_to_M <- summary(mod_X_to_M)
-  coef_X_to_M <- summary_X_to_M$coefficients
-  se_X_to_M <- summary_X_to_M$coefficients[X, "Std. Error"]
-  ## Y ~ X + M +Z
-  mod_XM_to_Y <- glm(formula = formula_XM_to_Y, data = data, family = binomial(), weights = propensity_density)
-  summary_XM_to_Y <- summary(mod_XM_to_Y)
-  coef_XM_to_Y <- summary_XM_to_Y$coefficients
-  se_XM_to_Y <- summary_XM_to_Y$coefficients[M, "Std. Error"]
-
-  # extract and calculate model result
-  b1 <- round(coef_X_to_Y[X, "Estimate"], digits = 5)
-  b1_pvalue <- round(coef_X_to_Y[X, "Pr(>|z|)"], digits = 5)
-  b2 <- round(coef_X_to_M[X, "Estimate"], digits = 5)
-  b2_pvalue <- round(coef_X_to_M[X, "Pr(>|t|)"], digits = 5)
-  b3 <- round(coef_XM_to_Y[X, "Estimate"], digits = 5)
-  b3_pvalue <- round(coef_XM_to_Y[X, "Pr(>|z|)"], digits = 5)
-  b4 <- round(coef_XM_to_Y[M, "Estimate"], digits = 5)
-  b4_pvalue <- round(coef_XM_to_Y[M, "Pr(>|z|)"], digits = 5)
-  b2_b4 <- round(b2 * b4, digits = 5)
-  
-  sobel_se <- sqrt((b4^2 * se_X_to_M^2) + (b2^2 * se_XM_to_Y^2))
-  sobel_z <- (b2 * b4) / sobel_se
-  sobel_pvalue <- 2 * (1 - pnorm(abs(sobel_z)))
-  
-  # store result
-  new_df <- data.frame(
-    Data = data_name,
-    Y = Y,
-    X = X,
-    mediator = M,
-    b1 = b1,
-    b1_pvalue = b1_pvalue,
-    b2 = b2,
-    b2_pvalue = b2_pvalue,
-    b3 = b3,
-    b3_pvalue = b3_pvalue,
-    b4 = b4,
-    b4_pvalue = b4_pvalue,
-    b2_b4 = b2_b4,
-    sobel_pvalue = sobel_pvalue
-  )
-  
-  sobel_df <- rbind(sobel_df, new_df)
-
-}
-
-
-# write.csv(sobel_df, "../results/mediation_result/mediation_sobel_240816.csv", row.names = FALSE)
-```
-
-
-significant mediators 
-```{r}
-coef_ci <- read.csv("../results/mediation_result/mediation_bootstrap_ci_240816.csv")
-sobel_df <- read.csv("../results/mediation_result/mediation_sobel_240816.csv")
-
-# Baron and Kenny
-# Y ~ X (b1); M ~ X (b2); Y ~ M (b4)
-med_BK_ci <- coef_ci %>%
-  filter((b1_ci_lwr * b1_ci_upr > 0) & (b2_ci_lwr * b2_ci_upr > 0) & (b4_ci_lwr * b4_ci_upr > 0))
-## 0 result
-med_BK_coef_sobel <- sobel_df %>%
-  filter((b1_pvalue <= 0.05) & (b2_pvalue <= 0.05) & (b4_pvalue <= 0.05))
-## 2 results
-med_BK_sobel <- sobel_df %>% 
-  filter(sobel_pvalue <= 0.05)
-## 6 rsults
-
-# Zhao
-# b2*b4
-med_zhao <- coef_ci %>%
-  filter(b2_b4_ci_lwr * b2_b4_ci_upr > 0)
-## 3 results
-
-# MacKinnon
-# M ~ X (b2); Y ~ M (b4)
-med_mackinnon <- coef_ci %>%
-  filter((b2_ci_lwr * b2_ci_upr > 0) & (b4_ci_lwr * b4_ci_upr > 0))
-## 3 results
-```
-
-
-
-
-### alternative mediation methods
-
-#### mediation package
-
-tests
-```{r}
-library(mediation)
-
-# features
-#all_combos[[41]]
-```
-
-```{r}
-# M ~ X + Z
-med.fit <- glm(FamIncome ~ nRS + age + gender + Diabetes + hdl + totchol + sbp, data = jhs_std) 
-# Y ~ X + M + Z
-out.fit <- glm(cvd_10y_HF ~ FamIncome + nRS + age + gender + Diabetes + hdl + totchol + sbp, 
-               data = jhs_std, family = binomial("probit")) 
-
-# estimation comparing nRS = 0/1 
-# med01.out <- mediate(med.fit, out.fit, treat = "nRS", mediator = "FamIncome", 
-#                      control.value = 0, treat.value = 1, boot = TRUE, sims = 100) 
-med.out <- mediate(med.fit, out.fit, treat = "nRS", mediator = "FamIncome", boot = TRUE, sims = 100) 
-
-# result
-summary(med.out)
-plot(med.out)
-```
-
-#### standardize the ordinal categorical mediators
-
-jhs nSES FamIncome
-```{r}
-# Y ~ X + Z
-TE.fit <- glm(cvd_10y_HF ~ nSES + age + gender + Diabetes + hdl + totchol + sbp, 
-               data = jhs_std, family = binomial()) 
-summary(TE.fit)
-
-# M ~ X + Z
-med.fit <- glm(FamIncome ~ nSES + age + gender + Diabetes + hdl + totchol + sbp, data = jhs_std) 
-summary(med.fit)
-
-# Y ~ X + M + Z
-out.fit <- glm(cvd_10y_HF ~ FamIncome + nSES + age + gender + Diabetes + hdl + totchol + sbp, 
-               data = jhs_std, family = binomial()) 
-summary(out.fit)
-
-cat("Total Effect =", coef(TE.fit)["nSES"], "\n",
-    "Direct Effect =", coef(out.fit)["nSES"], "\n",
-    "Indirect Effect =", coef(med.fit)["nSES"] * coef(out.fit)["FamIncome"], "\n")
-```
-
-
-MESA nSES currenSmoker as binary
-```{r}
-mesa_test <- mesa_std %>%
-  mutate(currentSmoker = as.factor(currentSmoker - 1),
-         alc = factor(alc - 1))
-
-# Y ~ X + Z
-TE.fit <- glm(cvd_10y_HF ~ nSES + age + gender + Diabetes + hdl + totchol + sbp + race + site, 
-               data = mesa_test, family = binomial()) 
-summary(TE.fit)
-
-# M ~ X + Z
-med.fit <- glm(currentSmoker ~ nSES + age + gender + Diabetes + hdl + totchol + sbp + race + site, 
-               data = mesa_test, family = binomial()) 
-summary(med.fit)
-
-# Y ~ X + M + Z
-out.fit <- glm(cvd_10y_HF ~ currentSmoker + nSES + age + gender + Diabetes + hdl + totchol + sbp + race + site, 
-               data = mesa_test, family = binomial()) 
-summary(out.fit)
-
-cat("Total Effect =", coef(TE.fit)["nSES"], "\n",
-    "Direct Effect =", coef(out.fit)["nSES"], "\n",
-    "Indirect Effect =", coef(med.fit)["nSES"] * coef(out.fit)[2], "\n")
-```
-
-mesa nSES currentSmoker as continuous
 ```{r}
 
-# Y ~ X + Z
-TE.fit <- glm(cvd_10y_HF ~ nSES + age + gender + Diabetes + hdl + totchol + sbp + race + site, 
-               data = mesa_std, family = binomial()) 
-summary(TE.fit)
-
-# M ~ X + Z
-med.fit <- glm(currentSmoker ~ nSES + age + gender + Diabetes + hdl + totchol + sbp + race + site, 
-               data = mesa_std) 
-summary(med.fit)
-
-# Y ~ X + M + Z
-out.fit <- glm(cvd_10y_HF ~ currentSmoker + nSES + age + gender + Diabetes + hdl + totchol + sbp + race + site, 
-               data = mesa_std, family = binomial()) 
-summary(out.fit)
-
-cat("Total Effect =", coef(TE.fit)["nSES"], "\n",
-    "Direct Effect =", coef(out.fit)["nSES"], "\n",
-    "Indirect Effect =", coef(med.fit)["nSES"] * coef(out.fit)[2], "\n")
 ```
-
-
-multiple mediators
-jhs nRS -> FamIncome, PhysAct, currentSmoker
-```{r}
-# Y ~ X + Z
-TE.fit <- glm(cvd_10y_HF ~ nRS + age + gender + Diabetes + hdl + totchol + sbp, 
-               data = jhs_std, family = binomial()) 
-summary(TE.fit)
-
-# M ~ X + Z
-med.fit1 <- glm(FamIncome ~ nRS + age + gender + Diabetes + hdl + totchol + sbp, 
-               data = jhs_std) 
-summary(med.fit1)
-med.fit2 <- glm(PhysAct ~ nRS + age + gender + Diabetes + hdl + totchol + sbp, 
-               data = jhs_std) 
-summary(med.fit2)
-med.fit3 <- glm(currentSmoker ~ nRS + age + gender + Diabetes + hdl + totchol + sbp, 
-               data = jhs_std) 
-summary(med.fit3)
-
-# Y ~ X + M + Z
-out.fit <- glm(cvd_10y_HF ~ FamIncome + PhysAct + currentSmoker + nRS + age + gender + Diabetes + hdl + totchol + sbp, 
-               data = jhs_std, family = binomial()) 
-summary(out.fit)
-
-# cat("Total Effect =", coef(TE.fit)["nRS"], "\n",
-#     "Direct Effect =", coef(out.fit)["nRS"], "\n",
-#     "Indirect Effect =", coef(med.fit)["nRS"] * coef(out.fit)[2], "\n")
-```
-
-
-
-
