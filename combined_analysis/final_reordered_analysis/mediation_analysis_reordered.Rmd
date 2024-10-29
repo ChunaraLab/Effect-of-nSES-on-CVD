@@ -335,6 +335,51 @@ med_report_df_boot_sum_sig <- med_report_df_boot_sum %>%
 write.csv(med_report_df_boot_sum_sig, "../../results/reordered_results/mediation/med_report_df_boot_sum_sig.csv", row.names = FALSE) 
 ```
 
+format the result table
+```{r}
+# delete pre-formatted beta values
+med_sig <- med_report_df_boot_sum_sig %>%
+  select(-c(4:54))
+
+# create the "head" table
+me_values <- c('FamIncome', 'nutrition', 'PhysAct', 'currentSmoker', 'alc')
+med_sig_head <- med_sig[ , c(1:4, 10)]
+med_sig_head <- med_sig_head[rep(1:nrow(med_sig_head), each = 5), ] %>%
+  mutate(Me = rep(me_values, times = nrow(med_sig_head))) %>%
+  mutate(b2 = NA,
+         b4 = NA,
+         IndirectEffect_b2_b4 = NA)
+
+
+
+# fill in the b2, b4, and IE values in med_sig_head, from med_sig df
+
+me_to_col_mapping <- list(
+  'FamIncome' = c('b2' = 'b21', 'b4' = 'b41', 'IndirectEffect_b2_b4' = 'IndirectEffect_b21_b41'),
+  'nutrition' = c('b2' = 'b22', 'b4' = 'b42', 'IndirectEffect_b2_b4' = 'IndirectEffect_b22_b42'),
+  'PhysAct' = c('b2' = 'b23', 'b4' = 'b43', 'IndirectEffect_b2_b4' = 'IndirectEffect_b23_b43'),
+  'currentSmoker' = c('b2' = 'b24', 'b4' = 'b44', 'IndirectEffect_b2_b4' = 'IndirectEffect_b24_b44'),
+  'alc' = c('b2' = 'b25', 'b4' = 'b45', 'IndirectEffect_b2_b4' = 'IndirectEffect_b25_b45')
+)
+
+## Merge med_sig_head and med_sig df
+merged_df <- med_sig_head %>%
+  left_join(med_sig, by = c("Data", "Y", "X", "TotalEffect_b1","DirectEffect_b3"))
+
+## Fill the 'b2', 'b4', and 'IndirectEffect_b2_b4' columns based on 'Me' values
+med_sig_head_filled <- merged_df %>%
+  rowwise() %>%
+  mutate(
+    b2 = get(me_to_col_mapping[[Me]]['b2']),
+    b4 = get(me_to_col_mapping[[Me]]['b4']),
+    IndirectEffect_b2_b4 = get(me_to_col_mapping[[Me]]['IndirectEffect_b2_b4'])
+  ) %>%
+  ungroup() %>%
+  select(names(med_sig_head)) 
+  
+write.csv(med_sig_head_filled, "../../results/reordered_results/mediation/med_sig_formatted.csv", row.names = FALSE) 
+
+```
 
 
 ### plotting
