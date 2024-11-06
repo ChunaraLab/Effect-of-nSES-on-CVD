@@ -263,9 +263,27 @@ write.csv(report_df_boot, "../../results/reordered_results/generalized_ipw/repor
 ```
 
 
+handle extreme values in mesa nFavFood coef
+```{r}
+# check values
+nFavFood_coef <- report_df_boot[(report_df_boot$Data=="mesa")&(report_df_boot$X=="nFavFood") , "X_coef"]
+# View(data.frame(nFavFood_coef)) 
+# 14 extreme values
+
+# replace with median value
+report_df_modified <- report_df_boot
+median_value <- median(report_df_modified[(report_df_modified$Data == "mesa") & 
+                                      (report_df_modified$X == "nFavFood"), "X_coef"], na.rm = TRUE)
+report_df_modified[(report_df_modified$Data == "mesa") & 
+               (report_df_modified$X == "nFavFood") & 
+               (abs(report_df_modified$X_coef) > 100), "X_coef"] <- median_value
+```
+
+
 summarize from the bootstrap data
 ```{r}
-boot_summarized <- report_df_boot %>%
+# summarize
+boot_summarized <- report_df_modified %>%
   group_by(Data, Y, X) %>%
   summarise(intercept = mean(intercept),
             X_coef_mean = mean(X_coef),
@@ -275,6 +293,7 @@ boot_summarized <- report_df_boot %>%
     X_coef = sprintf("%.3f [%.3f, %.3f]", X_coef_mean, X_ci_lwr, X_ci_upr),
     )
 ```
+
 ```{r}
 write.csv(boot_summarized, "../../results/reordered_results/generalized_ipw/boot_summarized.csv", row.names = FALSE)
 ```
