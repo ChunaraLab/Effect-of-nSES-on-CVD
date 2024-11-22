@@ -390,17 +390,12 @@ MESA nSES
 data <- mesa_std
 Y <- "cvd_10y_HF"
 X <- "nSES"
-Z <- c("nPhysFac","nFavFood","nRS",
-       "FamIncome","nutrition","PhysAct","currentSmoker","alc",
-       "age","Diabetes","hdl","totchol","sbp","gender",
+Z <- c("age","Diabetes","hdl","totchol","sbp","gender",
        "race","site")
 
 # generate formula 
 formula_ps_no <- as.formula("nSES ~ 1")
-formula_ps <- as.formula("nSES ~ nPhysFac+nFavFood+nRS+\
-                         FamIncome+nutrition+PhysAct+currentSmoker+alc+\
-                         age+Diabetes+hdl+totchol+sbp+gender+\
-                         race+site")
+formula_ps <- as.formula("nSES ~ age+Diabetes+hdl+totchol+sbp+gender+race+site")
   
 # get weights
 denominator = conditional_densities(data, X, formula_ps_no,formula_ps, use_confounders=T)
@@ -430,9 +425,9 @@ plt <- love.plot(smd_after,
 
 plt
 
-# ggsave("mesa_nses_balance.png", plot = plt,
-#            path = "../results/generalized_IPW/check_balance",
-#            width = 8, height = 6, dpi = 300)
+ggsave("mesa_nses_balance.png", plot = plt,
+           path = "../../results/reordered_results/generalized_ipw",
+           width = 8, height = 6, dpi = 300)
 ```
 
 
@@ -441,15 +436,11 @@ JHS nSES
 data <- jhs_std
 Y <- "cvd_10y_HF"
 X <- "nSES"
-Z <- c("nPhysFac","nFavFood","nRS",
-       "FamIncome","nutrition","PhysAct","currentSmoker","alc",
-       "age","Diabetes","hdl","totchol","sbp","gender")
+Z <- c("age","Diabetes","hdl","totchol","sbp","gender")
 
 # generate formula 
 formula_ps_no <- as.formula("nSES ~ 1")
-formula_ps <- as.formula("nSES ~ nPhysFac+nFavFood+nRS+\
-                         FamIncome+nutrition+PhysAct+currentSmoker+alc+\
-                         age+gender+Diabetes+hdl+totchol+sbp")
+formula_ps <- as.formula("nSES ~ age+gender+Diabetes+hdl+totchol+sbp")
   
 # fit model
 denominator = conditional_densities(data, X, formula_ps_no,formula_ps, use_confounders=T)
@@ -476,9 +467,10 @@ plt <- love.plot(smd_after,
   In JHS using n-SES as exposure",
        subtitle = "Dashed line: PC = -0.1 and PC = 0.1 (preferred threshold)")
 
-# ggsave("jhs_nses_balance.png", plot = plt,
-#            path = "../results/generalized_IPW/check_balance",
-#            width = 8, height = 6, dpi = 300)
+plt
+ggsave("jhs_nses_balance.png", plot = plt,
+           path = "../../results/reordered_results/generalized_ipw",
+           width = 8, height = 6, dpi = 300)
 ```
 
 
@@ -487,15 +479,11 @@ JHS nRS
 data <- jhs_std
 Y <- "cvd_10y_HF"
 X <- "nRS"
-Z <- c("nPhysFac","nFavFood","nSES",
-       "FamIncome","nutrition","PhysAct","currentSmoker","alc",
-       "age","Diabetes","hdl","totchol","sbp","gender")
+Z <- c("age","Diabetes","hdl","totchol","sbp","gender")
 
 # generate formula 
 formula_ps_no <- as.formula("nRS ~ 1")
-formula_ps <- as.formula("nRS ~ nSES+nPhysFac+nFavFood+\
-                         FamIncome+nutrition+PhysAct+currentSmoker+alc+\
-                         age+gender+Diabetes+hdl+totchol+sbp")
+formula_ps <- as.formula("nRS ~ age+gender+Diabetes+hdl+totchol+sbp")
   
 # fit model
 denominator = conditional_densities(data, X, formula_ps_no,formula_ps, use_confounders=T)
@@ -523,9 +511,11 @@ plt <- love.plot(smd_after,
   In JHS using n-Racial Segregation as exposure",
        subtitle = "Dashed line: PC = -0.1 and PC = 0.1 (preferred threshold)")
 
-# ggsave("jhs_nrs_balance.png", plot = plt,
-#            path = "../results/generalized_IPW/check_balance",
-#            width = 8, height = 6, dpi = 300)
+plt
+
+ggsave("jhs_nrs_balance.png", plot = plt,
+           path = "../../results/reordered_results/generalized_ipw",
+           width = 8, height = 6, dpi = 300)
 ```
 
 
