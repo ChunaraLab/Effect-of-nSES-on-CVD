@@ -384,18 +384,32 @@ for (i in 1:nrow(sig_from_boot)) {
 dichotomize the neighborhood exposure variables after weight calculation, to examine overlap and balance\\
 tutorial from https://ehsanx.github.io/psw/s3.html\\
 
+rename variables for plotting
+```{r}
+names(mesa_std) <- names(mesa_std) %>%
+  dplyr::recode("Diabetes" = "diabetes",
+                "hdl" = "HDL",
+                "totchol" = "Total_Cholesterol",
+                "sbp" = "SBP")
+
+names(jhs_std) <- names(jhs_std) %>%
+  dplyr::recode("Diabetes" = "diabetes",
+                "hdl" = "HDL",
+                "totchol" = "Total_Cholesterol",
+                "sbp" = "SBP")
+```
 
 MESA nSES
 ```{r, warning=FALSE}
 data <- mesa_std
 Y <- "cvd_10y_HF"
 X <- "nSES"
-Z <- c("age","Diabetes","hdl","totchol","sbp","gender",
+Z <- c("age","diabetes","HDL","Total_Cholesterol","SBP","gender",
        "race","site")
 
 # generate formula 
 formula_ps_no <- as.formula("nSES ~ 1")
-formula_ps <- as.formula("nSES ~ age+Diabetes+hdl+totchol+sbp+gender+race+site")
+formula_ps <- as.formula("nSES ~ age+diabetes+HDL+Total_Cholesterol+SBP+gender+race+site")
   
 # get weights
 denominator = conditional_densities(data, X, formula_ps_no,formula_ps, use_confounders=T)
@@ -417,11 +431,14 @@ smd_after <- bal.tab(
 
 # Plotting the SMDs before and after weighting
 plt <- love.plot(smd_after, 
-          threshold = 0.1,  # Preferred threshold for good balance
-          var.order = "alphabetical") +
-  labs(title = "Pearson correlation between the covariate and treatment before and after Weighting\
-  In MESA using n-SES as exposure",
-       subtitle = "Dashed line: PC = -0.1 and PC = 0.1 (preferred threshold)")
+                 threshold = 0.1) +
+  theme(axis.text = element_text(size = 15),  
+        axis.title = element_text(size = 18),
+        legend.text = element_text(size = 15),  
+        legend.title = element_text(size = 15)) +  
+  scale_x_continuous(name = "Treatment-Covariate Correlations for n-SES in MESA") +  
+  theme(plot.title = element_blank(),  
+        plot.subtitle = element_blank())  
 
 plt
 
@@ -436,11 +453,11 @@ JHS nSES
 data <- jhs_std
 Y <- "cvd_10y_HF"
 X <- "nSES"
-Z <- c("age","Diabetes","hdl","totchol","sbp","gender")
+Z <- c("age","diabetes","HDL","Total_Cholesterol","SBP","gender")
 
 # generate formula 
 formula_ps_no <- as.formula("nSES ~ 1")
-formula_ps <- as.formula("nSES ~ age+gender+Diabetes+hdl+totchol+sbp")
+formula_ps <- as.formula("nSES ~ age+gender+diabetes+HDL+Total_Cholesterol+SBP")
   
 # fit model
 denominator = conditional_densities(data, X, formula_ps_no,formula_ps, use_confounders=T)
@@ -461,11 +478,14 @@ smd_after <- bal.tab(
 
 # Plotting the SMDs before and after weighting
 plt <- love.plot(smd_after, 
-          threshold = 0.1,  # Preferred threshold for good balance
-          var.order = "alphabetical") +
-  labs(title = "Pearson correlation between the covariate and treatment before and after Weighting\
-  In JHS using n-SES as exposure",
-       subtitle = "Dashed line: PC = -0.1 and PC = 0.1 (preferred threshold)")
+                 threshold = 0.1) +
+  theme(axis.text = element_text(size = 15),  
+        axis.title = element_text(size = 18),
+        legend.text = element_text(size = 15),  
+        legend.title = element_text(size = 15)) +  
+  scale_x_continuous(name = "Treatment-Covariate Correlations for n-SES in JHS") +  
+  theme(plot.title = element_blank(),  
+        plot.subtitle = element_blank())   
 
 plt
 ggsave("jhs_nses_balance.png", plot = plt,
@@ -479,11 +499,11 @@ JHS nRS
 data <- jhs_std
 Y <- "cvd_10y_HF"
 X <- "nRS"
-Z <- c("age","Diabetes","hdl","totchol","sbp","gender")
+Z <- c("age","diabetes","HDL","Total_Cholesterol","SBP","gender")
 
 # generate formula 
 formula_ps_no <- as.formula("nRS ~ 1")
-formula_ps <- as.formula("nRS ~ age+gender+Diabetes+hdl+totchol+sbp")
+formula_ps <- as.formula("nRS ~ age+gender+diabetes+HDL+Total_Cholesterol+SBP")
   
 # fit model
 denominator = conditional_densities(data, X, formula_ps_no,formula_ps, use_confounders=T)
@@ -505,11 +525,14 @@ smd_after <- bal.tab(
 
 # Plotting the SMDs before and after weighting
 plt <- love.plot(smd_after, 
-          threshold = 0.1,  # Preferred threshold for good balance
-          var.order = "alphabetical") +
-  labs(title = "Pearson correlation between the covariate and treatment before and after Weighting\
-  In JHS using n-Racial Segregation as exposure",
-       subtitle = "Dashed line: PC = -0.1 and PC = 0.1 (preferred threshold)")
+                 threshold = 0.1) +
+  theme(axis.text = element_text(size = 15),  
+        axis.title = element_text(size = 18),
+        legend.text = element_text(size = 15),  
+        legend.title = element_text(size = 15)) +  
+  scale_x_continuous(name = "Treatment-Covariate Correlations for n-Racial Segregation in JHS") +  
+  theme(plot.title = element_blank(),  
+        plot.subtitle = element_blank())  
 
 plt
 
