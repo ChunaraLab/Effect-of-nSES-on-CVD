@@ -368,7 +368,13 @@ for (i in 1:nrow(sig_from_boot)) {
                    ifelse(X_name == "nSES", "Socioeconomic Status", "Racial Segregation"),
                    "Level in", data_name),
          y = "Predicted Probabilities of Experiencing CVD") +  # Axis labels
-    theme_minimal() 
+    theme_minimal() +
+    theme(
+        axis.text.x = element_text(size = 14),  # Increase X-axis tick label size
+        axis.text.y = element_text(size = 14),  # Increase Y-axis tick label size
+        axis.title.x = element_text(size = 16),  # Increase X-axis label size
+        axis.title.y = element_text(size = 16)   # Increase Y-axis label size
+    )
 
   # export plot
   ggsave(paste0(data_name,"_",Y_name,"_",X_name,".png"), plot = plt,
