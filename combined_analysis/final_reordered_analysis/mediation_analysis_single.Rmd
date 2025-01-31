@@ -1,0 +1,225 @@
+---
+title: "Mediation analysis"
+author: "Xiaoting Chen"
+date: "2024-08-22"
+output: pdf_document
+---
+
+```{r setup, include=FALSE, warning=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+## Prep
+
+### packages
+```{r, warning=FALSE}
+library(readr)
+library(tidyr)
+library(ggplot2)
+library(dplyr)
+library(stats) # handle normal distribution calculations
+library(splines) # using splines
+library(mgcv)
+library(bda) # sobel test
+```
+
+### data
+
+```{r}
+all_combos <- readRDS("all_combos.rds") 
+# subset of cvd_HF
+all_combos <- all_combos[c(1:20, 41:60)]
+```
+
+```{r}
+analysis_feature_mesa <- c('cvd_10y_HF', 'cvd_10y_noHF', 'nSES', 'nFavFood', 'nPhysFac', 'nRS',
+                      'FamIncome', 'nutrition', 'PhysAct', 'currentSmoker', 'alc',
+                      'age', 'gender', 'Diabetes', 'hdl', 'totchol', 'sbp',
+                      'site', 'race')
+
+analysis_feature_jhs <- c('cvd_10y_HF', 'cvd_10y_noHF', 
+                      'nSES', 'nFavFood', 'nPhysFac', 'nRS',
+                      'FamIncome', 'nutrition', 'PhysAct', 'currentSmoker', 'alc',
+                      'age', 'gender', 'Diabetes', 'hdl', 'totchol', 'sbp')
+
+ind_feature_map <- c('0' = 1, '1' = 2, '2' = 3)
+```
+
+```{r}
+mesa_std <- read.csv('../../data_processed/MESA/mesa_std.csv')
+
+mesa_std <- mesa_std %>%
+  select(analysis_feature_mesa) %>%
+  mutate(# # treat ind behavirol variables as conitnuous, avoid partial significant 
+    Diabetes = as.factor(Diabetes),
+         site = as.factor(site),
+         race = as.factor(race)) %>%
+  mutate( # recode to avoid 0
+    nutrition = recode(nutrition, !!!ind_feature_map),
+    PhysAct = recode(PhysAct, !!!ind_feature_map),
+    currentSmoker = recode(currentSmoker, !!!ind_feature_map),
+    alc = recode(alc, !!!ind_feature_map)
+  )
+
+```
+
+```{r}
+summary(mesa_std)
+```
+
+```{r}
+jhs_std <- read.csv('../../data_processed/JHS/jhs_std.csv')
+
+jhs_std <- jhs_std %>%
+  select(analysis_feature_jhs) %>%
+  mutate(Diabetes = as.factor(Diabetes)) %>%
+  mutate( # recode to avoid 0
+    nutrition = recode(nutrition, !!!ind_feature_map),
+    PhysAct = recode(PhysAct, !!!ind_feature_map),
+    currentSmoker = recode(currentSmoker, !!!ind_feature_map),
+    alc = recode(alc, !!!ind_feature_map)
+  )
+```
+
+```{r}
+summary(jhs_std)
+```
+
+
+```{r}
+named_datasets <- list(mesa = mesa_std, jhs = jhs_std)
+names(named_datasets) <- c("mesa", "jhs")
+```
+
+
+
+## result generation
+
+**Steps:**
+logitY ~ b0 + b1X + bZ + e
+M ~ b0 + b2X + bZ+ e
+logitY ~ b0 + b3X + b4M + bZ + e
+
+### bootstrap to obtain ci
+```{r, warning=FALSE, message=FALSE}
+n_boot <- 1000
+set.seed(123)
+
+med_report_df_boot <- data.frame(
+  boot = numeric(),
+  Data = character(),
+  Y = character(),
+  X = character(),
+  Me = character(),
+  b1 = numeric(),
+  b2 = numeric(),
+  b3 = numeric(),
+  b4 = numeric(),
+  b2_b4 = numeric(),
+  stringsAsFactors = FALSE 
+)
+
+for (i in seq_along(all_combos)) {
+  
+  print(i)  
+  combo <- all_combos[[i]]
+  
+  # get values
+  data_name = combo$data
+  data <- named_datasets[[data_name]]
+  Y_name <- combo$Y
+  X_name <- combo$X
+  M_name <- combo$M
+  Z <- combo$covariates
+  
+  # generate formula for mediation test
+  formula_X_to_Y <- paste(Y_name, "~", X_name, "+", paste(Z, collapse=" + "))
+  formula_X_to_Y <- as.formula(formula_X_to_Y)
+  formula_X_to_M <- paste(M_name, "~", X_name, "+", paste(Z, collapse=" + "))
+  formula_X_to_M <- as.formula(formula_X_to_M)
+  formula_XM_to_Y <- paste(Y_name, "~", X_name, "+", M_name, "+", paste(Z, collapse=" + "))
+  formula_XM_to_Y <- as.formula(formula_XM_to_Y)
+
+  # Bootstrap to get CIs
+
+  for (j in 1:n_boot) {
+    # Resample 
+    indices <- sample(1:nrow(data), replace = TRUE)
+    boot_data <- data[indices, ]
+    
+    # fit the models on the bootstrap sample
+    boot_mod_X_to_Y <- glm(formula = formula_X_to_Y, data = boot_data, family = binomial())
+    boot_mod_X_to_M <- glm(formula = formula_X_to_M, data = boot_data)
+    boot_mod_XM_to_Y <- glm(formula = formula_XM_to_Y, data = boot_data, family = binomial())
+    
+    # Extract coefficients
+    boot_coef_X_to_Y <- coef(boot_mod_X_to_Y)
+    boot_coef_X_to_M <- coef(boot_mod_X_to_M)
+    boot_coef_XM_to_Y <- coef(boot_mod_XM_to_Y)
+    
+    new_df <- data.frame(
+                boot = j,
+                Data = data_name,
+                Y = Y_name,
+                X = X_name,
+                Me = M_name,
+                b1 = boot_coef_X_to_Y[X_name],
+                b2 = boot_coef_X_to_M[X_name],
+                b3 = boot_coef_XM_to_Y[X_name],
+                b4 = boot_coef_XM_to_Y[M_name], 
+                b2_b4 = boot_coef_X_to_M[X_name]*boot_coef_XM_to_Y[M_name],
+                stringsAsFactors = FALSE )
+  
+    med_report_df_boot <- rbind(med_report_df_boot, new_df)
+  }
+  
+}
+```
+
+```{r}
+write.csv(med_report_df_boot, "../../results/reordered_results/mediation/single_med_report_df_boot.csv", row.names = FALSE)
+```
+
+
+### summarize mediation result 
+
+```{r}
+boot_summarized <- med_report_df_boot %>%
+  group_by(Data, Y, X, Me) %>%
+  summarise(b1_mean = mean(b1),
+            b1_ci_lwr = quantile(b1, 0.025),
+            b1_ci_upr = quantile(b1, 0.975),
+            b2_mean = mean(b2),
+            b2_ci_lwr = quantile(b2, 0.025),
+            b2_ci_upr = quantile(b2, 0.975),
+            b3_mean = mean(b3),
+            b3_ci_lwr = quantile(b3, 0.025),
+            b3_ci_upr = quantile(b3, 0.975),
+            b4_mean = mean(b4),
+            b4_ci_lwr = quantile(b4, 0.025),
+            b4_ci_upr = quantile(b4, 0.975),
+            b2_b4_mean = mean(b2_b4),
+            b2_b4_ci_lwr = quantile(b2_b4, 0.025),
+            b2_b4_ci_upr = quantile(b2_b4, 0.975)) %>%
+  mutate(
+    TotalEffect_b1 = sprintf("%.3f [%.3f, %.3f]", b1_mean, b1_ci_lwr, b1_ci_upr),
+    b2 = sprintf("%.3f [%.3f, %.3f]", b2_mean, b2_ci_lwr, b2_ci_upr),
+    DirectEffect_b3 = sprintf("%.3f [%.3f, %.3f]", b3_mean, b3_ci_lwr, b3_ci_upr),
+    b4 = sprintf("%.3f [%.3f, %.3f]", b4_mean, b4_ci_lwr, b4_ci_upr),
+    IndirectEffect_b2_b4 = sprintf("%.3f [%.3f, %.3f]", b2_b4_mean, b2_b4_ci_lwr, b2_b4_ci_upr)
+  )
+  
+
+write.csv(boot_summarized, "../../results/reordered_results/mediation/single_med_boot_summarized.csv", row.names = FALSE)
+```
+
+```{r}
+med_boot_sig <- boot_summarized %>%
+  filter(b2_b4_ci_lwr*b2_b4_ci_upr > 0) 
+
+write.csv(med_boot_sig, "../../results/reordered_results/mediation/single_med_boot_sig.csv", row.names = FALSE)
+```
+
+

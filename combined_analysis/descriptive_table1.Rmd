@@ -1,5 +1,5 @@
 ---
-title: "Univariate correlation table"
+title: "Table 1"
 author: "Xiaoting Chen"
 date: "2024-03-26"
 output: pdf_document
@@ -24,6 +24,9 @@ jhs_raw <- read.csv("../data_processed/JHS/jhs_raw.csv") %>%
 
 mesa_raw <- read.csv("../data_processed/MESA/mesa_raw.csv") %>%
   na.omit()
+
+mesa_race <- read.csv("../Data/MESA/exam_1/final_label_1.csv") %>%
+  select(idno, race1c)
 ```
 
 ```{r}
@@ -42,7 +45,7 @@ save_path <- "../results/univariate_table"
 
 ## analysis
 
-### positive outcome counts
+### outcome counts
 ```{r}
 sum(mesa_raw$cvd_10y_HF)
 sum(mesa_raw$cvd_10y_HF==0)
@@ -62,6 +65,30 @@ range(mesa_hf[mesa_hf$cvd_10y_HF == 0,]$nSES)
 
 range(jhs_hf[jhs_hf$cvd_10y_HF == 1,]$nSES)
 range(jhs_hf[jhs_hf$cvd_10y_HF == 0,]$nSES)
+```
+
+mesa outcome counts by race
+```{r}
+mesa_race_outcome <- merge(mesa_raw, mesa_race) %>% 
+  select(cvd_10y_HF, race1c)
+
+table(mesa_race_outcome)
+```
+JHS HF outcome
+```{r}
+jhs_event <- read.csv("../data_processed/JHS/jhs_event.csv") 
+
+filtered_data <- jhs_event %>%
+  filter(hf == 1, !is.na(years_hf))
+
+ggplot(filtered_data, aes(x = years_hf)) +
+  geom_histogram(binwidth = 1, fill = "blue", color = "black", alpha = 0.7) +
+  labs(title = "Years until HF in JHS",
+       x = "Years",
+       y = "Frequency") +
+  theme_minimal()
+
+sum(jhs_event$hf, na.rm = T)
 ```
 
 ### descriptive stats by outcome
